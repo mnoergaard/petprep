@@ -23,14 +23,6 @@ PET.
   :target: https://pypi.python.org/pypi/petprep/
   :alt: Latest Version
 
-.. image:: https://img.shields.io/badge/doi-10.1038%2Fs41592--018--0235--4-blue.svg
-  :target: https://doi.org/10.1038/s41592-018-0235-4
-  :alt: Published in Nature Methods
-
-.. image:: https://img.shields.io/badge/RRID-SCR__016216-blue.svg
-  :target: https://doi.org/10.1038/s41592-018-0235-4
-  :alt: RRID:SCR_016216
-
 About
 -----
 .. image:: https://github.com/oesteban/petrep/raw/f4c7a9804be26c912b24ef4dccba54bdd72fa1fd/docs/_static/fmriprep-21.0.0.svg
