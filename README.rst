@@ -1,8 +1,7 @@
 *PETPrep*: A Robust Preprocessing Pipeline for PET Data
 =========================================================
 *PETPrep* is a *NiPreps (NeuroImaging PREProcessing toolS)* application
-(`www.nipreps.org <https://www.nipreps.org>`__) for the preprocessing of
-PET.
+(`www.nipreps.org <https://www.nipreps.org>`__) for the preprocessing of Positron Emission Tomography (PET) data.
 
 .. image:: https://img.shields.io/badge/docker-nipreps/petprep-brightgreen.svg?logo=docker&style=flat
   :target: https://hub.docker.com/r/nipreps/petprep/tags/
