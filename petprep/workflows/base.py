@@ -21,10 +21,10 @@
 #     https://www.nipreps.org/community/licensing/
 #
 """
-fMRIPrep base processing workflows
+PETPrep base processing workflows
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. autofunction:: init_fmriprep_wf
+.. autofunction:: init_petprep_wf
 .. autofunction:: init_single_subject_wf
 
 """
@@ -39,14 +39,14 @@ from nipype.interfaces import utility as niu
 from .. import config
 from ..interfaces import DerivativesDataSink
 from ..interfaces.reports import SubjectSummary, AboutSummary
-from .bold import init_func_preproc_wf
+from .pet import init_pet_preproc_wf
 
 
-def init_fmriprep_wf():
+def init_petprep_wf():
     """
-    Build *fMRIPrep*'s pipeline.
+    Build *PETPrep*'s pipeline.
 
-    This workflow organizes the execution of FMRIPREP, with a sub-workflow for
+    This workflow organizes the execution of PETPREP, with a sub-workflow for
     each subject.
 
     If FreeSurfer's ``recon-all`` is to be run, a corresponding folder is created
@@ -57,17 +57,17 @@ def init_fmriprep_wf():
             :graph2use: orig
             :simple_form: yes
 
-            from fmriprep.workflows.tests import mock_config
-            from fmriprep.workflows.base import init_fmriprep_wf
+            from petprep.workflows.tests import mock_config
+            from petprep.workflows.base import init_petprep_wf
             with mock_config():
-                wf = init_fmriprep_wf()
+                wf = init_petprep_wf()
 
     """
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from niworkflows.interfaces.bids import BIDSFreeSurferDir
 
-    fmriprep_wf = Workflow(name='fmriprep_wf')
-    fmriprep_wf.base_dir = config.execution.work_dir
+    petprep_wf = Workflow(name='petprep_wf')
+    petprep_wf.base_dir = config.execution.work_dir
 
     freesurfer = config.workflow.run_reconall
     if freesurfer:
@@ -85,24 +85,24 @@ def init_fmriprep_wf():
         single_subject_wf = init_single_subject_wf(subject_id)
 
         single_subject_wf.config['execution']['crashdump_dir'] = str(
-            config.execution.fmriprep_dir / f"sub-{subject_id}"
+            config.execution.petprep_dir / f"sub-{subject_id}"
             / "log" / config.execution.run_uuid
         )
         for node in single_subject_wf._get_all_nodes():
             node.config = deepcopy(single_subject_wf.config)
         if freesurfer:
-            fmriprep_wf.connect(fsdir, 'subjects_dir',
+            petprep_wf.connect(fsdir, 'subjects_dir',
                                 single_subject_wf, 'inputnode.subjects_dir')
         else:
-            fmriprep_wf.add_nodes([single_subject_wf])
+            petprep_wf.add_nodes([single_subject_wf])
 
         # Dump a copy of the config file into the log directory
-        log_dir = config.execution.fmriprep_dir / f"sub-{subject_id}" \
+        log_dir = config.execution.petprep_dir / f"sub-{subject_id}" \
             / 'log' / config.execution.run_uuid
         log_dir.mkdir(exist_ok=True, parents=True)
-        config.to_filename(log_dir / 'fmriprep.toml')
+        config.to_filename(log_dir / 'petprep.toml')
 
-    return fmriprep_wf
+    return petprep_wf
 
 
 def init_single_subject_wf(subject_id):
@@ -110,19 +110,19 @@ def init_single_subject_wf(subject_id):
     Organize the preprocessing pipeline for a single subject.
 
     It collects and reports information about the subject, and prepares
-    sub-workflows to perform anatomical and functional preprocessing.
+    sub-workflows to perform anatomical and PET preprocessing.
     Anatomical preprocessing is performed in a single workflow, regardless of
     the number of sessions.
-    Functional preprocessing is performed using a separate workflow for each
-    individual BOLD series.
+    PET preprocessing is performed using a separate workflow for each
+    individual PET dataset.
 
     Workflow Graph
         .. workflow::
             :graph2use: orig
             :simple_form: yes
 
-            from fmriprep.workflows.tests import mock_config
-            from fmriprep.workflows.base import init_single_subject_wf
+            from petprep.workflows.tests import mock_config
+            from petprep.workflows.base import init_single_subject_wf
             with mock_config():
                 wf = init_single_subject_wf('01')
 
@@ -182,7 +182,7 @@ def init_single_subject_wf(subject_id):
         if anat_derivatives is None:
             config.loggers.workflow.warning(f"""\
 Attempted to access pre-existing anatomical derivatives at \
-<{config.execution.anat_derivatives}>, however not all expectations of fMRIPrep \
+<{config.execution.anat_derivatives}>, however not all expectations of PETPrep \
 were met (for participant <{subject_id}>, spaces <{', '.join(std_spaces)}>, \
 reconall <{config.workflow.run_reconall}>).""")
 
@@ -193,27 +193,26 @@ reconall <{config.workflow.run_reconall}>).""")
     workflow = Workflow(name=name)
     workflow.__desc__ = """
 Results included in this manuscript come from preprocessing
-performed using *fMRIPrep* {fmriprep_ver}
-(@fmriprep1; @fmriprep2; RRID:SCR_016216),
+performed using *PETPrep* {petprep_ver},
 which is based on *Nipype* {nipype_ver}
 (@nipype1; @nipype2; RRID:SCR_002502).
 
-""".format(fmriprep_ver=config.environment.version,
+""".format(petprep_ver=config.environment.version,
            nipype_ver=config.environment.nipype_version)
     workflow.__postdesc__ = """
 
-Many internal operations of *fMRIPrep* use
+Many internal operations of *PETPrep* use
 *Nilearn* {nilearn_ver} [@nilearn, RRID:SCR_001362],
 mostly within the functional processing workflow.
 For more details of the pipeline, see [the section corresponding
-to workflows in *fMRIPrep*'s documentation]\
-(https://fmriprep.readthedocs.io/en/latest/workflows.html \
-"FMRIPrep's documentation").
+to workflows in *PETPrep*'s documentation]\
+(https://petprep.readthedocs.io/en/latest/workflows.html \
+"PETPrep's documentation").
 
 
 ### Copyright Waiver
 
-The above boilerplate text was automatically generated by fMRIPrep
+The above boilerplate text was automatically generated by PETPrep
 with the express intention that users should copy and paste this
 text into their manuscripts *unchanged*.
 It is released under the [CC0]\
@@ -223,7 +222,7 @@ It is released under the [CC0]\
 
 """.format(nilearn_ver=NILEARN_VERSION)
 
-    fmriprep_dir = str(config.execution.fmriprep_dir)
+    petprep_dir = str(config.execution.petprep_dir)
 
     inputnode = pe.Node(niu.IdentityInterface(fields=['subjects_dir']),
                         name='inputnode')
@@ -251,7 +250,7 @@ It is released under the [CC0]\
         name='ds_report_summary', run_without_submitting=True)
 
     ds_report_about = pe.Node(
-        DerivativesDataSink(base_directory=fmriprep_dir, desc='about', datatype="figures",
+        DerivativesDataSink(base_directory=petprep_dir, desc='about', datatype="figures",
                             dismiss_entities=("echo",)),
         name='ds_report_about', run_without_submitting=True)
 
@@ -297,7 +296,7 @@ It is released under the [CC0]\
         ])
     else:
         workflow.connect([
-            (bidssrc, bids_info, [(('bold', fix_multi_T1w_source_name), 'in_file')]),
+            (bidssrc, bids_info, [(('pet', fix_multi_T1w_source_name), 'in_file')]),
             (anat_preproc_wf, summary, [('outputnode.t1w_preproc', 't1w')]),
             (anat_preproc_wf, ds_report_summary, [('outputnode.t1w_preproc', 'source_file')]),
             (anat_preproc_wf, ds_report_about, [('outputnode.t1w_preproc', 'source_file')]),

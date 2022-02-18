@@ -21,11 +21,11 @@
 #     https://www.nipreps.org/community/licensing/
 #
 """
-Orchestrating the BOLD-preprocessing workflow
+Orchestrating the PET-preprocessing workflow
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. autofunction:: init_func_preproc_wf
-.. autofunction:: init_func_derivatives_wf
+.. autofunction:: init_pet_preproc_wf
+.. autofunction:: init_pet_derivatives_wf
 
 """
 from ... import config
@@ -39,54 +39,47 @@ from nipype.interfaces import utility as niu
 
 from niworkflows.utils.connections import pop_file, listify
 
-
-from ...utils.meepi import combine_meepi_source
-
 from ...interfaces import DerivativesDataSink
 from ...interfaces.reports import FunctionalSummary
 
-# BOLD workflows
+# PET workflows
 from .confounds import init_bold_confs_wf, init_carpetplot_wf
 from .hmc import init_bold_hmc_wf
-from .stc import init_bold_stc_wf
-from .t2s import init_bold_t2s_wf
-from .registration import init_bold_t1_trans_wf, init_bold_reg_wf
+from .registration import init_pet_t1_trans_wf, init_pet_reg_wf
 from .resampling import (
-    init_bold_surf_wf,
-    init_bold_std_trans_wf,
-    init_bold_preproc_trans_wf,
+    init_pet_surf_wf,
+    init_pet_std_trans_wf,
+    init_pet_preproc_trans_wf,
 )
-from .outputs import init_func_derivatives_wf
+from .outputs import init_pet_derivatives_wf
 
 
-def init_func_preproc_wf(bold_file, has_fieldmap=False):
+def init_pet_preproc_wf(pet_file):
     """
-    This workflow controls the functional preprocessing stages of *fMRIPrep*.
+    This workflow controls the PET preprocessing stages of *PETPrep*.
 
     Workflow Graph
         .. workflow::
             :graph2use: orig
             :simple_form: yes
 
-            from fmriprep.workflows.tests import mock_config
-            from fmriprep import config
-            from fmriprep.workflows.bold.base import init_func_preproc_wf
+            from petprep.workflows.tests import mock_config
+            from petprep import config
+            from petprep.workflows.pet.base import init_pet_preproc_wf
             with mock_config():
-                bold_file = config.execution.bids_dir / "sub-01" / "func" \
-                    / "sub-01_task-mixedgamblestask_run-01_bold.nii.gz"
-                wf = init_func_preproc_wf(str(bold_file))
+                pet_file = config.execution.bids_dir / "sub-01" / "pet" \
+                    / "sub-01_ses-baseline_pet.nii.gz"
+                wf = init_pet_preproc_wf(str(pet_file))
 
     Parameters
     ----------
-    bold_file
-        Path to NIfTI file (single echo) or list of paths to NIfTI files (multi-echo)
-    has_fieldmap : :obj:`bool`
-        Signals the workflow to use inputnode fieldmap files
+    pet_file
+        Path to NIfTI file
 
     Inputs
     ------
     bold_file
-        BOLD series NIfTI file
+        PET NIfTI file
     t1w_preproc
         Bias-corrected structural template image
     t1w_mask
@@ -117,55 +110,43 @@ def init_func_preproc_wf(bold_file, has_fieldmap=False):
 
     Outputs
     -------
-    bold_t1
-        BOLD series, resampled to T1w space
-    bold_mask_t1
-        BOLD series mask in T1w space
-    bold_std
-        BOLD series, resampled to template space
-    bold_mask_std
-        BOLD series mask in template space
+    pet_t1
+        PET data resampled to T1w space
+    pet_mask_t1
+        PET data mask in T1w space
+    pet_std
+        PET data resampled to template space
+    pet_mask_std
+        PET data mask in template space
     confounds
         TSV of confounds
     surfaces
-        BOLD series, resampled to FreeSurfer surfaces
-    aroma_noise_ics
-        Noise components identified by ICA-AROMA
-    melodic_mix
-        FSL MELODIC mixing matrix
-    bold_cifti
-        BOLD CIFTI image
+        PET data resampled to FreeSurfer surfaces
+    pet_cifti
+        PET CIFTI image
     cifti_variant
-        combination of target spaces for `bold_cifti`
+        combination of target spaces for `pet_cifti`
 
     See Also
     --------
 
-    * :py:func:`~niworkflows.func.util.init_bold_reference_wf`
-    * :py:func:`~fmriprep.workflows.bold.stc.init_bold_stc_wf`
-    * :py:func:`~fmriprep.workflows.bold.hmc.init_bold_hmc_wf`
-    * :py:func:`~fmriprep.workflows.bold.t2s.init_bold_t2s_wf`
-    * :py:func:`~fmriprep.workflows.bold.registration.init_bold_t1_trans_wf`
-    * :py:func:`~fmriprep.workflows.bold.registration.init_bold_reg_wf`
-    * :py:func:`~fmriprep.workflows.bold.confounds.init_bold_confs_wf`
-    * :py:func:`~fmriprep.workflows.bold.confounds.init_ica_aroma_wf`
-    * :py:func:`~fmriprep.workflows.bold.resampling.init_bold_std_trans_wf`
-    * :py:func:`~fmriprep.workflows.bold.resampling.init_bold_preproc_trans_wf`
-    * :py:func:`~fmriprep.workflows.bold.resampling.init_bold_surf_wf`
-    * :py:func:`~sdcflows.workflows.fmap.init_fmap_wf`
-    * :py:func:`~sdcflows.workflows.pepolar.init_pepolar_unwarp_wf`
-    * :py:func:`~sdcflows.workflows.phdiff.init_phdiff_wf`
-    * :py:func:`~sdcflows.workflows.syn.init_syn_sdc_wf`
-    * :py:func:`~sdcflows.workflows.unwarp.init_sdc_unwarp_wf`
+    * :py:func:`~niworkflows.func.util.init_pet_reference_wf`
+    * :py:func:`~petprep.workflows.pet.hmc.init_bold_hmc_wf`
+    * :py:func:`~petprep.workflows.pet.registration.init_pet_t1_trans_wf`
+    * :py:func:`~petprep.workflows.pet.registration.init_pet_reg_wf`
+    * :py:func:`~petprep.workflows.pet.confounds.init_pet_confs_wf`
+    * :py:func:`~petprep.workflows.pet.resampling.init_pet_std_trans_wf`
+    * :py:func:`~petprep.workflows.pet.resampling.init_pet_preproc_trans_wf`
+    * :py:func:`~petprep.workflows.pet.resampling.init_pet_surf_wf`
 
     """
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
-    from niworkflows.func.util import init_bold_reference_wf
+    from niworkflows.func.util import init_pet_reference_wf
     from niworkflows.interfaces.nibabel import ApplyMask
     from niworkflows.interfaces.utility import KeySelect, DictMerge
 
     if nb.load(
-        bold_file[0] if isinstance(bold_file, (list, tuple)) else bold_file
+        pet_file[0] if isinstance(pet_file, (list, tuple)) else pet_file
     ).shape[3:] <= (5 - config.execution.sloppy,):
         config.loggers.workflow.warning(
             f"Too short BOLD series (<= 5 timepoints). Skipping processing of <{bold_file}>."
@@ -179,17 +160,17 @@ def init_func_preproc_wf(bold_file, has_fieldmap=False):
     omp_nthreads = config.nipype.omp_nthreads
     freesurfer = config.workflow.run_reconall
     spaces = config.workflow.spaces
-    fmriprep_dir = str(config.execution.fmriprep_dir)
+    petprep_dir = str(config.execution.petprep_dir)
 
     # Extract BIDS entities and metadata from BOLD file(s)
-    entities = extract_entities(bold_file)
+    entities = extract_entities(pet_file)
     layout = config.execution.layout
 
     # Extract metadata
-    all_metadata = [layout.get_metadata(fname) for fname in listify(bold_file)]
+    all_metadata = [layout.get_metadata(fname) for fname in listify(pet_file)]
 
     # Take first file as reference
-    ref_file = pop_file(bold_file)
+    ref_file = pop_file(pet_file)
     metadata = all_metadata[0]
     # get original image orientation
     ref_orientation = get_img_orientation(ref_file)
@@ -245,41 +226,6 @@ def init_func_preproc_wf(bold_file, has_fieldmap=False):
         )
     config.loggers.workflow.info(sbref_msg)
 
-    if has_fieldmap:
-        # First check if specified via B0FieldSource
-        estimator_key = listify(metadata.get("B0FieldSource"))
-
-        if not estimator_key:
-            from pathlib import Path
-            import re
-            from sdcflows.fieldmaps import get_identifier
-
-            # Fallback to IntendedFor
-            intended_rel = re.sub(
-                r"^sub-[a-zA-Z0-9]*/",
-                "",
-                str(Path(
-                    bold_file if not multiecho else bold_file[0]
-                ).relative_to(layout.root))
-            )
-            estimator_key = get_identifier(intended_rel)
-
-        if not estimator_key:
-            has_fieldmap = False
-            config.loggers.workflow.critical(
-                f"None of the available B0 fieldmaps are associated to <{bold_file}>"
-            )
-        else:
-            config.loggers.workflow.info(
-                f"Found usable B0-map (fieldmap) estimator(s) <{', '.join(estimator_key)}> "
-                f"to correct <{bold_file}> for susceptibility-derived distortions.")
-
-    # Check whether STC must/can be run
-    run_stc = (
-        bool(metadata.get("SliceTiming"))
-        and "slicetiming" not in config.workflow.ignore
-    )
-
     # Build workflow
     workflow = Workflow(name=wf_name)
     workflow.__postdesc__ = """\
@@ -297,7 +243,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     inputnode = pe.Node(
         niu.IdentityInterface(
             fields=[
-                "bold_file",
+                "pet_file",
                 "subjects_dir",
                 "subject_id",
                 "t1w_preproc",
@@ -311,45 +257,37 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                 "template",
                 "t1w2fsnative_xfm",
                 "fsnative2t1w_xfm",
-                "fmap",
-                "fmap_ref",
-                "fmap_coeff",
-                "fmap_mask",
-                "fmap_id",
-                "sdc_method",
             ]
         ),
         name="inputnode",
     )
-    inputnode.inputs.bold_file = bold_file
+    inputnode.inputs.pet_file = pet_file
 
     outputnode = pe.Node(
         niu.IdentityInterface(
             fields=[
-                "bold_t1",
-                "bold_t1_ref",
-                "bold2anat_xfm",
-                "anat2bold_xfm",
-                "bold_mask_t1",
-                "bold_aseg_t1",
-                "bold_aparc_t1",
-                "bold_std",
-                "bold_std_ref",
-                "bold_mask_std",
-                "bold_aseg_std",
-                "bold_aparc_std",
-                "bold_native",
-                "bold_native_ref",
-                "bold_mask_native",
-                "bold_echos_native",
-                "bold_cifti",
+                "pet_t1",
+                "pet_t1_ref",
+                "pet2anat_xfm",
+                "anat2pet_xfm",
+                "pet_mask_t1",
+                "pet_aseg_t1",
+                "pet_aparc_t1",
+                "pet_std",
+                "pet_std_ref",
+                "pet_mask_std",
+                "pet_aseg_std",
+                "pet_aparc_std",
+                "pet_native",
+                "pet_native_ref",
+                "pet_mask_native",
+                "pet_echos_native",
+                "pet_cifti",
                 "cifti_variant",
                 "cifti_metadata",
                 "cifti_density",
                 "surfaces",
                 "confounds",
-                "aroma_noise_ics",
-                "melodic_mix",
                 "nonaggr_denoised_file",
                 "confounds_metadata",
             ]
@@ -368,19 +306,15 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     else:
         echo_index.inputs.echoidx = 0
 
-    # BOLD source: track original BOLD file(s)
-    bold_source = pe.Node(niu.Select(inlist=bold_file), name="bold_source")
+    # PET source: track original BOLD file(s)
+    pet_source = pe.Node(niu.Select(inlist=pet_file), name="pet_source")
 
-    # BOLD buffer: an identity used as a pointer to either the original BOLD
-    # or the STC'ed one for further use.
-    boldbuffer = pe.Node(niu.IdentityInterface(fields=["bold_file"]), name="boldbuffer")
 
     summary = pe.Node(
-        FunctionalSummary(
-            slice_timing=run_stc,
+        PETSummary(
             registration=("FSL", "FreeSurfer")[freesurfer],
-            registration_dof=config.workflow.bold2t1w_dof,
-            registration_init=config.workflow.bold2t1w_init,
+            registration_dof=config.workflow.pet2t1w_dof,
+            registration_init=config.workflow.pet2t1w_init,
             pe_direction=metadata.get("PhaseEncodingDirection"),
             echo_idx=echo_idxs,
             tr=metadata["RepetitionTime"],
@@ -392,93 +326,84 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     )
     summary.inputs.dummy_scans = config.workflow.dummy_scans
 
-    func_derivatives_wf = init_func_derivatives_wf(
+    pet_derivatives_wf = init_pet_derivatives_wf(
         bids_root=layout.root,
         cifti_output=config.workflow.cifti_output,
         freesurfer=freesurfer,
         all_metadata=all_metadata,
-        multiecho=multiecho,
-        output_dir=fmriprep_dir,
+        output_dir=petprep_dir,
         spaces=spaces,
-        use_aroma=config.workflow.use_aroma,
     )
-    func_derivatives_wf.inputs.inputnode.all_source_files = bold_file
+    pet_derivatives_wf.inputs.inputnode.all_source_files = pet_file
 
     # fmt:off
     workflow.connect([
-        (outputnode, func_derivatives_wf, [
-            ("bold_t1", "inputnode.bold_t1"),
-            ("bold_t1_ref", "inputnode.bold_t1_ref"),
-            ("bold2anat_xfm", "inputnode.bold2anat_xfm"),
-            ("anat2bold_xfm", "inputnode.anat2bold_xfm"),
-            ("bold_aseg_t1", "inputnode.bold_aseg_t1"),
-            ("bold_aparc_t1", "inputnode.bold_aparc_t1"),
-            ("bold_mask_t1", "inputnode.bold_mask_t1"),
-            ("bold_native", "inputnode.bold_native"),
-            ("bold_native_ref", "inputnode.bold_native_ref"),
-            ("bold_mask_native", "inputnode.bold_mask_native"),
-            ("bold_echos_native", "inputnode.bold_echos_native"),
+        (outputnode, pet_derivatives_wf, [
+            ("pet_t1", "inputnode.pet_t1"),
+            ("pet_t1_ref", "inputnode.pet_t1_ref"),
+            ("pet2anat_xfm", "inputnode.pet2anat_xfm"),
+            ("pet2bold_xfm", "inputnode.pet2bold_xfm"),
+            ("pet_aseg_t1", "inputnode.pet_aseg_t1"),
+            ("pet_aparc_t1", "inputnode.pet_aparc_t1"),
+            ("pet_mask_t1", "inputnode.pet_mask_t1"),
+            ("pet_native", "inputnode.pet_native"),
+            ("pet_native_ref", "inputnode.pet_native_ref"),
+            ("pet_mask_native", "inputnode.pet_mask_native"),
             ("confounds", "inputnode.confounds"),
             ("surfaces", "inputnode.surf_files"),
-            ("aroma_noise_ics", "inputnode.aroma_noise_ics"),
-            ("melodic_mix", "inputnode.melodic_mix"),
-            ("nonaggr_denoised_file", "inputnode.nonaggr_denoised_file"),
-            ("bold_cifti", "inputnode.bold_cifti"),
+            ("pet_cifti", "inputnode.pet_cifti"),
             ("cifti_variant", "inputnode.cifti_variant"),
             ("cifti_metadata", "inputnode.cifti_metadata"),
             ("cifti_density", "inputnode.cifti_density"),
             ("confounds_metadata", "inputnode.confounds_metadata"),
-            ("acompcor_masks", "inputnode.acompcor_masks"),
-            ("tcompcor_mask", "inputnode.tcompcor_mask"),
         ]),
     ])
     # fmt:on
 
     # Generate a tentative boldref
-    initial_boldref_wf = init_bold_reference_wf(
-        name="initial_boldref_wf",
+    initial_petref_wf = init_pet_reference_wf(
+        name="initial_petref_wf",
         omp_nthreads=omp_nthreads,
-        bold_file=bold_file,
+        pet_file=pet_file,
         sbref_files=sbref_files,
-        multiecho=multiecho,
     )
-    initial_boldref_wf.inputs.inputnode.dummy_scans = config.workflow.dummy_scans
+    initial_petref_wf.inputs.inputnode.dummy_scans = config.workflow.dummy_scans
 
-    # Select validated BOLD files (orientations checked or corrected)
-    select_bold = pe.Node(niu.Select(), name="select_bold")
+    # Select validated PET files (orientations checked or corrected)
+    select_pet = pe.Node(niu.Select(), name="select_pet")
 
     # Top-level BOLD splitter
     bold_split = pe.Node(
         FSLSplit(dimension="t"), name="bold_split", mem_gb=mem_gb["filesize"] * 3
     )
 
-    # HMC on the BOLD
-    bold_hmc_wf = init_bold_hmc_wf(
-        name="bold_hmc_wf", mem_gb=mem_gb["filesize"], omp_nthreads=omp_nthreads
+    # HMC on the PET
+    pet_hmc_wf = init_pet_hmc_wf(
+        name="pet_hmc_wf", mem_gb=mem_gb["filesize"], omp_nthreads=omp_nthreads
     )
 
     # calculate BOLD registration to T1w
-    bold_reg_wf = init_bold_reg_wf(
-        bold2t1w_dof=config.workflow.bold2t1w_dof,
-        bold2t1w_init=config.workflow.bold2t1w_init,
+    pet_reg_wf = init_pet_reg_wf(
+        pet2t1w_dof=config.workflow.pet2t1w_dof,
+        pet2t1w_init=config.workflow.pet2t1w_init,
         freesurfer=freesurfer,
         mem_gb=mem_gb["resampled"],
-        name="bold_reg_wf",
+        name="pet_reg_wf",
         omp_nthreads=omp_nthreads,
         sloppy=config.execution.sloppy,
-        use_bbr=config.workflow.use_bbr,
+        use_coreg=config.workflow.use_coreg,
         use_compression=False,
     )
 
     # apply BOLD registration to T1w
-    bold_t1_trans_wf = init_bold_t1_trans_wf(
-        name="bold_t1_trans_wf",
+    pet_t1_trans_wf = init_pet_t1_trans_wf(
+        name="pet_t1_trans_wf",
         freesurfer=freesurfer,
         mem_gb=mem_gb["resampled"],
         omp_nthreads=omp_nthreads,
         use_compression=False,
     )
-    bold_t1_trans_wf.inputs.inputnode.fieldwarp = "identity"
+    pet_t1_trans_wf.inputs.inputnode.fieldwarp = "identity"
 
     # get confounds
     bold_confounds_wf = init_bold_confs_wf(
@@ -491,42 +416,6 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         name="bold_confounds_wf",
     )
     bold_confounds_wf.get_node("inputnode").inputs.t1_transform_flags = [False]
-
-    # SLICE-TIME CORRECTION (or bypass) #############################################
-    if run_stc:
-        bold_stc_wf = init_bold_stc_wf(name="bold_stc_wf", metadata=metadata)
-        # fmt:off
-        workflow.connect([
-            (initial_boldref_wf, bold_stc_wf, [("outputnode.skip_vols", "inputnode.skip_vols")]),
-            (select_bold, bold_stc_wf, [("out", "inputnode.bold_file")]),
-            (bold_stc_wf, boldbuffer, [("outputnode.stc_file", "bold_file")]),
-        ])
-        # fmt:on
-
-    # bypass STC from original BOLD in both SE and ME cases
-    else:
-        workflow.connect([(select_bold, boldbuffer, [("out", "bold_file")])])
-
-    # MULTI-ECHO EPI DATA #############################################
-    if multiecho:  # instantiate relevant interfaces, imports
-        split_opt_comb = bold_split.clone(name="split_opt_comb")
-
-        inputnode.inputs.bold_file = ref_file  # Replace reference w first echo
-
-        join_echos = pe.JoinNode(
-            niu.IdentityInterface(fields=["bold_files"]),
-            joinsource="echo_index",
-            joinfield=["bold_files"],
-            name="join_echos",
-        )
-
-        # create optimal combination, adaptive T2* map
-        bold_t2s_wf = init_bold_t2s_wf(
-            echo_times=tes,
-            mem_gb=mem_gb["resampled"],
-            omp_nthreads=omp_nthreads,
-            name="bold_t2smap_wf",
-        )
 
     bold_final = pe.Node(
         niu.IdentityInterface(fields=["bold", "boldref", "mask", "bold_echos"]),
