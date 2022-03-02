@@ -25,11 +25,11 @@ from ._version import get_versions
 __version__ = get_versions()['version']
 del get_versions
 
-__packagename__ = 'fmriprep'
+__packagename__ = 'petprep'
 __copyright__ = 'Copyright 2021, The NiPreps Developers'
 __credits__ = ('Contributors: please check the ``.zenodo.json`` file at the top-level folder'
                'of the repository')
-__url__ = 'https://github.com/nipreps/fmriprep'
+__url__ = 'https://github.com/nipreps/petprep'
 
 DOWNLOAD_URL = (
     'https://github.com/nipreps/{name}/archive/{ver}.tar.gz'.format(
