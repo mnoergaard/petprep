@@ -38,7 +38,7 @@ def check_latest():
     latest = None
     date = None
     outdated = None
-    cachefile = Path.home() / ".cache" / "fmriprep" / "latest"
+    cachefile = Path.home() / ".cache" / "petprep" / "latest"
     try:
         cachefile.parent.mkdir(parents=True, exist_ok=True)
     except OSError:
@@ -62,7 +62,7 @@ def check_latest():
     if latest is None or outdated is True:
         try:
             response = requests.get(
-                url="https://pypi.org/pypi/fmriprep/json", timeout=1.0
+                url="https://pypi.org/pypi/petprep/json", timeout=1.0
             )
         except Exception:
             response = None
@@ -88,12 +88,12 @@ def check_latest():
 
 def is_flagged():
     """Check whether current version is flagged."""
-    # https://raw.githubusercontent.com/nipreps/fmriprep/master/.versions.json
+    # https://raw.githubusercontent.com/nipreps/petprep/master/.versions.json
     flagged = tuple()
     try:
         response = requests.get(
             url="""\
-https://raw.githubusercontent.com/nipreps/fmriprep/master/.versions.json""",
+https://raw.githubusercontent.com/nipreps/petprep/master/.versions.json""",
             timeout=1.0,
         )
     except Exception:
