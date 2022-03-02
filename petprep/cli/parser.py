@@ -91,7 +91,7 @@ def _build_parser(**kwargs):
                 raise parser.error(f"Path does not exist: <{value}>.")
 
 
-    verstr = f"fMRIPrep v{config.environment.version}"
+    verstr = f"PETPrep v{config.environment.version}"
     currentv = Version(config.environment.version)
     is_release = not any(
         (currentv.is_devrelease, currentv.is_prerelease, currentv.is_postrelease)
@@ -167,8 +167,8 @@ def _build_parser(**kwargs):
         metavar="FILE",
         help="a JSON file describing custom BIDS input filters using PyBIDS. "
         "For further details, please check out "
-        "https://fmriprep.readthedocs.io/en/%s/faq.html#"
-        "how-do-I-select-only-certain-files-to-be-input-to-fMRIPrep"
+        "https://petprep.readthedocs.io/en/%s/faq.html#"
+        "how-do-I-select-only-certain-files-to-be-input-to-PETPrep"
         % (currentv.base_version if is_release else "latest"),
     )
     g_bids.add_argument(
@@ -282,7 +282,7 @@ Non-standard spaces imply specific orientations and sampling grids. \
 Important to note, the ``res-*`` modifier does not define the resolution used for \
 the spatial normalization. To generate no PET outputs, use this option without specifying \
 any spatial references. For further details, please check out \
-https://fmriprep.readthedocs.io/en/%s/spaces.html"""
+https://petprep.readthedocs.io/en/%s/spaces.html"""
         % (currentv.base_version if is_release else "latest"),
     )
 
@@ -523,7 +523,7 @@ https://fmriprep.readthedocs.io/en/%s/spaces.html"""
             """\
 You are using PETPrep-%s, and a newer version of PETPrep is available: %s.
 Please check out our documentation about how and when to upgrade:
-https://fmriprep.readthedocs.io/en/latest/faq.html#upgrading"""
+https://petprep.readthedocs.io/en/latest/faq.html#upgrading"""
             % (currentv, latest),
             file=sys.stderr,
         )
@@ -614,7 +614,7 @@ inputs. Please, BEWARE OF THE RISKS TO THE CONSISTENCY of results when using var
 processing workflows across participants. To determine whether a participant has been run \
 through the shortcut pipeline (meaning, brain extraction was skipped), please check the \
 citation boilerplate. When reporting results with varying pipelines, please make sure you \
-mention this particular variant of fMRIPrep listing the participants for which it was \
+mention this particular variant of PETPrep listing the participants for which it was \
 applied."""
         )
 
@@ -629,11 +629,11 @@ applied."""
             config.execution.fs_subjects_dir = output_dir / "sourcedata" / "freesurfer"
         elif output_layout == "legacy":
             config.execution.fs_subjects_dir = output_dir / "freesurfer"
-    if config.execution.fmriprep_dir is None:
+    if config.execution.petprep_dir is None:
         if output_layout == "bids":
-            config.execution.fmriprep_dir = output_dir
+            config.execution.petprep_dir = output_dir
         elif output_layout == "legacy":
-            config.execution.fmriprep_dir = output_dir / "petprep"
+            config.execution.petprep_dir = output_dir / "petprep"
 
     # Wipe out existing work_dir
     if opts.clean_workdir and work_dir.exists():
