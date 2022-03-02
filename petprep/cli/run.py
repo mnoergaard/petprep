@@ -21,7 +21,7 @@
 #
 #     https://www.nipreps.org/community/licensing/
 #
-"""fMRI preprocessing workflow."""
+"""PET preprocessing workflow."""
 from .. import config
 
 
@@ -63,20 +63,20 @@ def main():
         p.join()
 
         retcode = p.exitcode or retval.get("return_code", 0)
-        fmriprep_wf = retval.get("workflow", None)
+        petprep_wf = retval.get("workflow", None)
 
     # CRITICAL Load the config from the file. This is necessary because the ``build_workflow``
     # function executed constrained in a process may change the config (and thus the global
-    # state of fMRIPrep).
+    # state of PETPrep).
     config.load(config_file)
 
     if config.execution.reports_only:
         sys.exit(int(retcode > 0))
 
-    if fmriprep_wf and config.execution.write_graph:
-        fmriprep_wf.write_graph(graph2use="colored", format="svg", simple_form=True)
+    if petprep_wf and config.execution.write_graph:
+        petprep_wf.write_graph(graph2use="colored", format="svg", simple_form=True)
 
-    retcode = retcode or (fmriprep_wf is None) * EX_SOFTWARE
+    retcode = retcode or (petprep_wf is None) * EX_SOFTWARE
     if retcode != 0:
         sys.exit(retcode)
 
@@ -84,7 +84,7 @@ def main():
     with Manager() as mgr:
         from .workflow import build_boilerplate
 
-        p = Process(target=build_boilerplate, args=(str(config_file), fmriprep_wf))
+        p = Process(target=build_boilerplate, args=(str(config_file), petprep_wf))
         p.start()
         p.join()
 
@@ -99,25 +99,25 @@ def main():
         with sentry_sdk.configure_scope() as scope:
             scope.set_tag("run_uuid", config.execution.run_uuid)
             scope.set_tag("npart", len(config.execution.participant_label))
-        sentry_sdk.add_breadcrumb(message="fMRIPrep started", level="info")
-        sentry_sdk.capture_message("fMRIPrep started", level="info")
+        sentry_sdk.add_breadcrumb(message="PETPrep started", level="info")
+        sentry_sdk.capture_message("PETPrep started", level="info")
 
     config.loggers.workflow.log(
         15,
         "\n".join(
-            ["fMRIPrep config:"] + ["\t\t%s" % s for s in config.dumps().splitlines()]
+            ["PETPrep config:"] + ["\t\t%s" % s for s in config.dumps().splitlines()]
         ),
     )
-    config.loggers.workflow.log(25, "fMRIPrep started!")
+    config.loggers.workflow.log(25, "PETPrep started!")
     errno = 1  # Default is error exit unless otherwise set
     try:
-        fmriprep_wf.run(**config.nipype.get_plugin())
+        petprep_wf.run(**config.nipype.get_plugin())
     except Exception as e:
         if not config.execution.notrack:
             from ..utils.sentry import process_crashfile
 
             crashfolders = [
-                config.execution.fmriprep_dir
+                config.execution.petprep_dir
                 / "sub-{}".format(s)
                 / "log"
                 / config.execution.run_uuid
@@ -129,29 +129,29 @@ def main():
 
             if "Workflow did not execute cleanly" not in str(e):
                 sentry_sdk.capture_exception(e)
-        config.loggers.workflow.critical("fMRIPrep failed: %s", e)
+        config.loggers.workflow.critical("PETPrep failed: %s", e)
         raise
     else:
-        config.loggers.workflow.log(25, "fMRIPrep finished successfully!")
+        config.loggers.workflow.log(25, "PETPrep finished successfully!")
         if not config.execution.notrack:
-            success_message = "fMRIPrep finished without errors"
+            success_message = "PETPrep finished without errors"
             sentry_sdk.add_breadcrumb(message=success_message, level="info")
             sentry_sdk.capture_message(success_message, level="info")
 
         # Bother users with the boilerplate only iff the workflow went okay.
-        boiler_file = config.execution.fmriprep_dir / "logs" / "CITATION.md"
+        boiler_file = config.execution.petprep_dir / "logs" / "CITATION.md"
         if boiler_file.exists():
             if config.environment.exec_env in (
                 "singularity",
                 "docker",
-                "fmriprep-docker",
+                "petprep-docker",
             ):
                 boiler_file = Path("<OUTPUT_PATH>") / boiler_file.relative_to(
                     config.execution.output_dir
                 )
             config.loggers.workflow.log(
                 25,
-                "Works derived from this fMRIPrep execution should include the "
+                "Works derived from this PETPrep execution should include the "
                 f"boilerplate text found in {boiler_file}.",
             )
 
@@ -161,28 +161,28 @@ def main():
 
             dseg_tsv = str(api.get("fsaverage", suffix="dseg", extension=[".tsv"]))
             _copy_any(
-                dseg_tsv, str(config.execution.fmriprep_dir / "desc-aseg_dseg.tsv")
+                dseg_tsv, str(config.execution.petprep_dir / "desc-aseg_dseg.tsv")
             )
             _copy_any(
-                dseg_tsv, str(config.execution.fmriprep_dir / "desc-aparcaseg_dseg.tsv")
+                dseg_tsv, str(config.execution.petprep_dir / "desc-aparcaseg_dseg.tsv")
             )
         errno = 0
     finally:
-        from fmriprep.reports.core import generate_reports
+        from petprep.reports.core import generate_reports
         from pkg_resources import resource_filename as pkgrf
 
         # Generate reports phase
         failed_reports = generate_reports(
             config.execution.participant_label,
-            config.execution.fmriprep_dir,
+            config.execution.petprep_dir,
             config.execution.run_uuid,
-            config=pkgrf("fmriprep", "data/reports-spec.yml"),
-            packagename="fmriprep",
+            config=pkgrf("petprep", "data/reports-spec.yml"),
+            packagename="petprep",
         )
         write_derivative_description(
-            config.execution.bids_dir, config.execution.fmriprep_dir
+            config.execution.bids_dir, config.execution.petprep_dir
         )
-        write_bidsignore(config.execution.fmriprep_dir)
+        write_bidsignore(config.execution.petprep_dir)
 
         if failed_reports and not config.execution.notrack:
             sentry_sdk.capture_message(
@@ -194,6 +194,6 @@ def main():
 
 if __name__ == "__main__":
     raise RuntimeError(
-        "fmriprep/cli/run.py should not be run directly;\n"
-        "Please `pip install` fmriprep and use the `fmriprep` command"
+        "petprep/cli/run.py should not be run directly;\n"
+        "Please `pip install` petprep and use the `petprep` command"
     )
