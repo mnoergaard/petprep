@@ -2,14 +2,14 @@
 # vi: set ft=python sts=4 ts=4 sw=4 et:
 """
 
-Pre-processing fMRI - BOLD signal workflows
+Pre-processing PET - dynamic PET signal workflows
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. automodule:: fmriprep.workflows.bold.base
-.. automodule:: fmriprep.workflows.bold.hmc
-.. automodule:: fmriprep.workflows.bold.registration
-.. automodule:: fmriprep.workflows.bold.resampling
-.. automodule:: fmriprep.workflows.bold.confounds
+.. automodule:: petprep.workflows.bold.base
+.. automodule:: petprep.workflows.bold.hmc
+.. automodule:: petprep.workflows.bold.registration
+.. automodule:: petprep.workflows.bold.resampling
+.. automodule:: petprep.workflows.bold.confounds
 
 
 """
