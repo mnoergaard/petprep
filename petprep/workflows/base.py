@@ -162,11 +162,11 @@ def init_single_subject_wf(subject_id):
     anat_derivatives = config.execution.anat_derivatives
     spaces = config.workflow.spaces
     # Make sure we always go through these two checks
-    if not anat_only and not subject_data['bold']:
+    if not anat_only and not subject_data['pet']:
         task_id = config.execution.task_id
         raise RuntimeError(
-            "No BOLD images found for participant {} and task {}. "
-            "All workflows require BOLD images.".format(
+            "No PET images found for participant {} and task {}. "
+            "All workflows require PET images.".format(
                 subject_id, task_id if task_id else '<all>')
         )
 
@@ -312,13 +312,13 @@ It is released under the [CC0]\
 
 
     # Append the functional section to the existing anatomical exerpt
-    # That way we do not need to stream down the number of bold datasets
+    # That way we do not need to stream down the number of pet datasets
     pet_pre_desc = """
-Functional data preprocessing
+PET data preprocessing
 
-: For each of the {num_bold} BOLD runs found per subject (across all
+: For each of the {num_pet} PET runs found per subject (across all
 tasks and sessions), the following preprocessing was performed.
-""".format(num_bold=len(subject_data['bold']))
+""".format(num_pet=len(subject_data['pet']))
 
     pet_preproc_wfs = []
     for pet_file in subject_data['pet']:
