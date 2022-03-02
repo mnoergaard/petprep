@@ -345,3 +345,6 @@ tasks and sessions), the following preprocessing was performed.
               ('outputnode.fsnative2t1w_xfm', 'inputnode.fsnative2t1w_xfm')]),
         ])
         pet_preproc_wfs.append(pet_preproc_wf)
+        
+def _prefix(subid):
+    return subid if subid.startswith('sub-') else f'sub-{subid}'
