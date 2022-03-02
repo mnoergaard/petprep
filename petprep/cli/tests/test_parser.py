@@ -111,9 +111,9 @@ def test_get_parser_update(monkeypatch, capsys, current, latest):
     captured = capsys.readouterr().err
 
     msg = """\
-You are using fMRIPrep-%s, and a newer version of fMRIPrep is available: %s.
+You are using PETPrep-%s, and a newer version of PETPrep is available: %s.
 Please check out our documentation about how and when to upgrade:
-https://fmriprep.readthedocs.io/en/latest/faq.html#upgrading""" % (
+https://petprep.readthedocs.io/en/latest/faq.html#upgrading""" % (
         current,
         latest,
     )
@@ -143,7 +143,7 @@ def test_get_parser_blacklist(monkeypatch, capsys, flagged):
 def test_parse_args(tmp_path):
     """Basic smoke test showing that our parse_args() function
     implements the BIDS App protocol"""
-    bids_dir = pkgrf('fmriprep', 'data/tests/ds000005')
+    bids_dir = pkgrf('petprep', 'data/tests/ds000005')
     out_dir = tmp_path / "out"
     work_dir = tmp_path / "work"
 
