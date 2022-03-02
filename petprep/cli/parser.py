@@ -90,19 +90,6 @@ def _build_parser(**kwargs):
             else:
                 raise parser.error(f"Path does not exist: <{value}>.")
 
-    def _slice_time_ref(value, parser):
-        if value == "start":
-            value = 0
-        elif value == "middle":
-            value = 0.5
-        try:
-            value = float(value)
-        except ValueError:
-            raise parser.error("Slice time reference must be number, 'start', or 'middle'. "
-                               f"Received {value}.")
-        if not 0 <= value <= 1:
-            raise parser.error(f"Slice time reference must be in range 0-1. Received {value}.")
-        return value
 
     verstr = f"fMRIPrep v{config.environment.version}"
     currentv = Version(config.environment.version)
@@ -111,7 +98,7 @@ def _build_parser(**kwargs):
     )
 
     parser = ArgumentParser(
-        description="fMRIPrep: fMRI PREProcessing workflows v{}".format(
+        description="PETPrep: PET PREProcessing workflows v{}".format(
             config.environment.version
         ),
         formatter_class=ArgumentDefaultsHelpFormatter,
@@ -121,7 +108,6 @@ def _build_parser(**kwargs):
     IsFile = partial(_is_file, parser=parser)
     PositiveInt = partial(_min_one, parser=parser)
     BIDSFilter = partial(_bids_filter, parser=parser)
-    SliceTimeRef = partial(_slice_time_ref, parser=parser)
 
     # Arguments as specified by BIDS-Apps
     # required, positional arguments
@@ -143,7 +129,7 @@ def _build_parser(**kwargs):
         "analysis_level",
         choices=["participant"],
         help='processing stage to be run, only "participant" in the case of '
-        "fMRIPrep (see BIDS-Apps specification).",
+        "PETPrep (see BIDS-Apps specification).",
     )
 
     # optional arguments
@@ -172,15 +158,7 @@ def _build_parser(**kwargs):
     # Re-enable when option is actually implemented
     # g_bids.add_argument('-r', '--run-id', action='store', default='single_run',
     #                     help='select a specific run to be processed')
-    g_bids.add_argument(
-        "-t", "--task-id", action="store", help="select a specific task to be processed"
-    )
-    g_bids.add_argument(
-        "--echo-idx",
-        action="store",
-        type=int,
-        help="select a specific echo to be processed in a multiecho series",
-    )
+    
     g_bids.add_argument(
         "--bids-filter-file",
         dest="bids_filters",
@@ -198,7 +176,7 @@ def _build_parser(**kwargs):
         action="store",
         metavar="PATH",
         type=PathExists,
-        help="Reuse the anatomical derivatives from another fMRIPrep run or calculated "
+        help="Reuse the anatomical derivatives from another PETPrep run or calculated "
         "with an alternative processing tool (NOT RECOMMENDED).",
     )
     g_bids.add_argument(
@@ -234,7 +212,7 @@ def _build_parser(**kwargs):
         action="store",
         type=_to_gb,
         metavar="MEMORY_MB",
-        help="upper bound memory limit for fMRIPrep processes",
+        help="upper bound memory limit for PETPrep processes",
     )
     g_perfm.add_argument(
         "--low-mem",
@@ -266,14 +244,6 @@ def _build_parser(**kwargs):
         help="skip generation of HTML and LaTeX formatted citation with pandoc",
     )
     g_perfm.add_argument(
-        "--error-on-aroma-warnings",
-        action="store_true",
-        dest="aroma_err_on_warn",
-        default=False,
-        help="Raise an error if ICA_AROMA does not produce sensible output "
-        "(e.g., if all the components are classified as signal or noise)",
-    )
-    g_perfm.add_argument(
         "-v",
         "--verbose",
         dest="verbose_count",
@@ -289,7 +259,7 @@ def _build_parser(**kwargs):
         action="store",
         nargs="+",
         default=[],
-        choices=["fieldmaps", "slicetiming", "sbref", "t2w", "flair"],
+        choices=["sbref", "t2w", "flair"],
         help="ignore selected aspects of the input dataset to disable corresponding "
         "parts of the workflow (a space delimited list)",
     )
@@ -303,42 +273,34 @@ def _build_parser(**kwargs):
         nargs="*",
         action=OutputReferencesAction,
         help="""\
-Standard and non-standard spaces to resample anatomical and functional images to. \
+Standard and non-standard spaces to resample anatomical and PET images to. \
 Standard spaces may be specified by the form \
 ``<SPACE>[:cohort-<label>][:res-<resolution>][...]``, where ``<SPACE>`` is \
 a keyword designating a spatial reference, and may be followed by optional, \
 colon-separated parameters. \
 Non-standard spaces imply specific orientations and sampling grids. \
 Important to note, the ``res-*`` modifier does not define the resolution used for \
-the spatial normalization. To generate no BOLD outputs, use this option without specifying \
+the spatial normalization. To generate no PET outputs, use this option without specifying \
 any spatial references. For further details, please check out \
 https://fmriprep.readthedocs.io/en/%s/spaces.html"""
         % (currentv.base_version if is_release else "latest"),
     )
-    g_conf.add_argument(
-        "--me-output-echos",
-        action="store_true",
-        default=False,
-        help="""\
-Output individual echo time series with slice, motion and susceptibility correction. \
-Useful for further Tedana processing post-fMRIPrep."""
-    )
 
     g_conf.add_argument(
-        "--bold2t1w-init",
+        "--pet2t1w-init",
         action="store",
         default="register",
         choices=["register", "header"],
         help='Either "register" (the default) to initialize volumes at center or "header"'
-        " to use the header information when coregistering BOLD to T1w images.",
+        " to use the header information when coregistering PET to T1w images.",
     )
     g_conf.add_argument(
-        "--bold2t1w-dof",
+        "--pet2t1w-dof",
         action="store",
         default=6,
         choices=[6, 9, 12],
         type=int,
-        help="Degrees of freedom when registering BOLD to T1w images. "
+        help="Degrees of freedom when registering PET to T1w images. "
         "6 degrees (rotation and translation) are used by default.",
     )
     g_conf.add_argument(
@@ -364,17 +326,6 @@ Useful for further Tedana processing post-fMRIPrep."""
         "performed for GIFTI files mapped to a freesurfer subject (fsaverage or fsnative).",
     )
     g_conf.add_argument(
-        "--slice-time-ref",
-        required=False,
-        action="store",
-        default=None,
-        type=SliceTimeRef,
-        help="The time of the reference slice to correct BOLD values to, as a fraction "
-             "acquisition time. 0 indicates the start, 0.5 the midpoint, and 1 the end "
-             "of acquisition. The alias `start` corresponds to 0, and `middle` to 0.5. "
-             "The default value is 0.5.",
-    )
-    g_conf.add_argument(
         "--dummy-scans",
         required=False,
         action="store",
@@ -391,36 +342,9 @@ Useful for further Tedana processing post-fMRIPrep."""
         help="Initialize the random seed for the workflow",
     )
 
-    # ICA_AROMA options
-    g_aroma = parser.add_argument_group("Specific options for running ICA_AROMA")
-    g_aroma.add_argument(
-        "--use-aroma",
-        action="store_true",
-        default=False,
-        help="add ICA_AROMA to your preprocessing stream",
-    )
-    g_aroma.add_argument(
-        "--aroma-melodic-dimensionality",
-        dest="aroma_melodic_dim",
-        action="store",
-        default=-200,
-        type=int,
-        help="Exact or maximum number of MELODIC components to estimate "
-        "(positive = exact, negative = maximum)",
-    )
-
     # Confounds options
     g_confounds = parser.add_argument_group("Specific options for estimating confounds")
-    g_confounds.add_argument(
-        "--return-all-components",
-        dest="regressors_all_comps",
-        required=False,
-        action="store_true",
-        default=False,
-        help="Include all components estimated in CompCor decomposition in the confounds "
-        "file instead of only the components sufficient to explain 50 percent of "
-        "BOLD variance in each CompCor mask",
-    )
+    
     g_confounds.add_argument(
         "--fd-spike-threshold",
         dest="regressors_fd_th",
@@ -465,37 +389,6 @@ Useful for further Tedana processing post-fMRIPrep."""
         help="determiner for T1-weighted skull stripping ('force' ensures skull "
         "stripping, 'skip' ignores skull stripping, and 'auto' applies brain extraction "
         "based on the outcome of a heuristic to check whether the brain is already masked).",
-    )
-
-    # Fieldmap options
-    g_fmap = parser.add_argument_group("Specific options for handling fieldmaps")
-    g_fmap.add_argument(
-        "--fmap-bspline",
-        action="store_true",
-        default=False,
-        help="fit a B-Spline field using least-squares (experimental)",
-    )
-    g_fmap.add_argument(
-        "--fmap-no-demean",
-        action="store_false",
-        default=True,
-        help="do not remove median (within mask) from fieldmap",
-    )
-
-    # SyN-unwarp options
-    g_syn = parser.add_argument_group("Specific options for SyN distortion correction")
-    g_syn.add_argument(
-        "--use-syn-sdc",
-        action="store_true",
-        default=False,
-        help="EXPERIMENTAL: Use fieldmap-free distortion correction",
-    )
-    g_syn.add_argument(
-        "--force-syn",
-        action="store_true",
-        default=False,
-        help="EXPERIMENTAL/TEMPORARY: Use SyN correction in addition to "
-        "fieldmap correction, if available",
     )
 
     # FreeSurfer options
@@ -548,7 +441,7 @@ Useful for further Tedana processing post-fMRIPrep."""
         action="store",
         default="bids",
         choices=("bids", "legacy"),
-        help="Organization of outputs. bids (default) places fMRIPrep derivatives "
+        help="Organization of outputs. bids (default) places PETPrep derivatives "
         "directly in the output directory, and defaults to placing FreeSurfer "
         "derivatives in <output-dir>/sourcedata/freesurfer. legacy creates "
         "derivative datasets as subdirectories of outputs."
@@ -566,7 +459,7 @@ Useful for further Tedana processing post-fMRIPrep."""
         action="store_true",
         default=False,
         help="Clears working directory of contents. Use of this flag is not"
-        "recommended when running concurrent processes of fMRIPrep.",
+        "recommended when running concurrent processes of PETPrep.",
     )
     g_other.add_argument(
         "--resource-monitor",
@@ -605,8 +498,8 @@ Useful for further Tedana processing post-fMRIPrep."""
         action="store_true",
         default=False,
         help="Opt-out of sending tracking information of this run to "
-        "the FMRIPREP developers. This information helps to "
-        "improve FMRIPREP and provides an indicator of real "
+        "the PETPREP developers. This information helps to "
+        "improve PETPREP and provides an indicator of real "
         "world usage crucial for obtaining funding.",
     )
     g_other.add_argument(
@@ -628,7 +521,7 @@ Useful for further Tedana processing post-fMRIPrep."""
     if latest is not None and currentv < latest:
         print(
             """\
-You are using fMRIPrep-%s, and a newer version of fMRIPrep is available: %s.
+You are using PETPrep-%s, and a newer version of PETPrep is available: %s.
 Please check out our documentation about how and when to upgrade:
 https://fmriprep.readthedocs.io/en/latest/faq.html#upgrading"""
             % (currentv, latest),
@@ -640,7 +533,7 @@ https://fmriprep.readthedocs.io/en/latest/faq.html#upgrading"""
         _reason = _blist[1] or "unknown"
         print(
             """\
-WARNING: Version %s of fMRIPrep (current) has been FLAGGED
+WARNING: Version %s of PETPrep (current) has been FLAGGED
 (reason: %s).
 That means some severe flaw was found in it and we strongly
 discourage its usage."""
@@ -740,13 +633,13 @@ applied."""
         if output_layout == "bids":
             config.execution.fmriprep_dir = output_dir
         elif output_layout == "legacy":
-            config.execution.fmriprep_dir = output_dir / "fmriprep"
+            config.execution.fmriprep_dir = output_dir / "petprep"
 
     # Wipe out existing work_dir
     if opts.clean_workdir and work_dir.exists():
         from niworkflows.utils.misc import clean_directory
 
-        build_log.info(f"Clearing previous fMRIPrep working directory: {work_dir}")
+        build_log.info(f"Clearing previous PETPrep working directory: {work_dir}")
         if not clean_directory(work_dir):
             build_log.warning(
                 f"Could not clear all contents of working directory: {work_dir}"
@@ -759,7 +652,7 @@ applied."""
             "Please modify the output path (suggestion: %s)."
             % bids_dir
             / "derivatives"
-            / ("fmriprep-%s" % version.split("+")[0])
+            / ("petprep-%s" % version.split("+")[0])
         )
 
     if bids_dir in work_dir.parents:
@@ -781,7 +674,7 @@ applied."""
         )
 
     # Setup directories
-    config.execution.log_dir = config.execution.fmriprep_dir / "logs"
+    config.execution.log_dir = config.execution.petprep_dir / "logs"
     # Check and create output and working directories
     config.execution.log_dir.mkdir(exist_ok=True, parents=True)
     work_dir.mkdir(exist_ok=True, parents=True)
