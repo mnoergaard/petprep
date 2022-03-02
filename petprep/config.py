@@ -381,8 +381,6 @@ class execution(_Config):
     """Run in sloppy mode (meaning, suboptimal parameters that minimize run-time)."""
     debug = []
     """Debug mode(s)."""
-    echo_idx = None
-    """Select a particular echo for multi-echo EPI datasets."""
     petprep_dir = None
     """Root of PETPrep BIDS Derivatives dataset. Depends on output_layout."""
     fs_license_file = _fs_license
@@ -403,8 +401,6 @@ class execution(_Config):
     """Do not monitor *PETPrep* using Sentry.io."""
     output_dir = None
     """Folder where derivatives will be stored."""
-    me_output_echos = False
-    """Output individual echo time series with slice, motion and susceptibility correction"""
     output_layout = None
     """Layout of derivatives within output_dir."""
     output_spaces = None
@@ -416,8 +412,6 @@ class execution(_Config):
     """Unique identifier of this particular run."""
     participant_label = None
     """List of participant identifiers that are to be preprocessed."""
-    task_id = None
-    """Select a particular task from all available in the dataset."""
     templateflow_home = _templateflow_home
     """The root folder of the TemplateFlow client."""
     work_dir = Path("work").absolute()
@@ -542,9 +536,6 @@ class workflow(_Config):
     instance keeping standard and nonstandard spaces."""
     use_bbr = None
     """Run boundary-based registration for PET-to-T1w registration."""
-    use_syn_sdc = None
-    """Run *fieldmap-less* susceptibility-derived distortions estimation
-    in the absence of any alternatives."""
 
 
 class loggers:
