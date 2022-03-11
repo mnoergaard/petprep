@@ -40,17 +40,17 @@ from nipype.interfaces import utility as niu
 from niworkflows.utils.connections import pop_file, listify
 
 from ...interfaces import DerivativesDataSink
-from ...interfaces.reports import FunctionalSummary
+from ...interfaces.reports import PETSummary
 
 # PET workflows
 from .confounds import init_bold_confs_wf, init_carpetplot_wf
-from .hmc import init_bold_hmc_wf
+from .hmc import init_pet_hmc_wf
 from .registration import init_pet_t1_trans_wf, init_pet_reg_wf
-from .resampling import (
-    init_pet_surf_wf,
-    init_pet_std_trans_wf,
-    init_pet_preproc_trans_wf,
-)
+#from .resampling import (
+#    init_pet_surf_wf,
+#    init_pet_std_trans_wf,
+#    init_pet_preproc_trans_wf,
+#)
 from .outputs import init_pet_derivatives_wf
 
 
@@ -149,7 +149,7 @@ def init_pet_preproc_wf(pet_file):
         pet_file[0] if isinstance(pet_file, (list, tuple)) else pet_file
     ).shape[3:] <= (5 - config.execution.sloppy,):
         config.loggers.workflow.warning(
-            f"Too short BOLD series (<= 5 timepoints). Skipping processing of <{bold_file}>."
+            f"Too short PET series (<= 5 timepoints). Skipping processing of <{pet_file}>."
         )
         return
 
@@ -175,28 +175,6 @@ def init_pet_preproc_wf(pet_file):
     # get original image orientation
     ref_orientation = get_img_orientation(ref_file)
 
-    echo_idxs = listify(entities.get("echo", []))
-    multiecho = len(echo_idxs) > 2
-    if len(echo_idxs) == 1:
-        config.loggers.workflow.warning(
-            f"Running a single echo <{ref_file}> from a seemingly multi-echo dataset."
-        )
-        bold_file = ref_file  # Just in case - drop the list
-
-    if len(echo_idxs) == 2:
-        raise RuntimeError(
-            "Multi-echo processing requires at least three different echos (found two)."
-        )
-
-    if multiecho:
-        # Drop echo entity for future queries, have a boolean shorthand
-        entities.pop("echo", None)
-        # reorder echoes from shortest to largest
-        tes, bold_file = zip(
-            *sorted([(layout.get_metadata(bf)["EchoTime"], bf) for bf in bold_file])
-        )
-        ref_file = bold_file[0]  # Reset reference to be the shortest TE
-
     if os.path.isfile(ref_file):
         bold_tlen, mem_gb = _create_mem_gb(ref_file)
 
@@ -210,21 +188,6 @@ def init_pet_preproc_wf(pet_file):
         mem_gb["resampled"],
         mem_gb["largemem"],
     )
-
-    # Find associated sbref, if possible
-    entities["suffix"] = "sbref"
-    entities["extension"] = [".nii", ".nii.gz"]  # Overwrite extensions
-    sbref_files = layout.get(return_type="file", **entities)
-
-    sbref_msg = f"No single-band-reference found for {os.path.basename(ref_file)}."
-    if sbref_files and "sbref" in config.workflow.ignore:
-        sbref_msg = "Single-band reference file(s) found and ignored."
-        sbref_files = []
-    elif sbref_files:
-        sbref_msg = "Using single-band reference file(s) {}.".format(
-            ",".join([os.path.basename(sbf) for sbf in sbref_files])
-        )
-    config.loggers.workflow.info(sbref_msg)
 
     # Build workflow
     workflow = Workflow(name=wf_name)
@@ -298,15 +261,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     # Generate a brain-masked conversion of the t1w
     t1w_brain = pe.Node(ApplyMask(), name="t1w_brain")
 
-    # Track echo index - this allows us to treat multi- and single-echo workflows
-    # almost identically
-    echo_index = pe.Node(niu.IdentityInterface(fields=["echoidx"]), name="echo_index")
-    if multiecho:
-        echo_index.iterables = [("echoidx", range(len(bold_file)))]
-    else:
-        echo_index.inputs.echoidx = 0
-
-    # PET source: track original BOLD file(s)
+    # PET source: track original PET file(s)
     pet_source = pe.Node(niu.Select(inlist=pet_file), name="pet_source")
 
 
@@ -315,9 +270,6 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             registration=("FSL", "FreeSurfer")[freesurfer],
             registration_dof=config.workflow.pet2t1w_dof,
             registration_init=config.workflow.pet2t1w_init,
-            pe_direction=metadata.get("PhaseEncodingDirection"),
-            echo_idx=echo_idxs,
-            tr=metadata["RepetitionTime"],
             orientation=ref_orientation,
         ),
         name="summary",
@@ -364,18 +316,12 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     initial_petref_wf = init_pet_reference_wf(
         name="initial_petref_wf",
         omp_nthreads=omp_nthreads,
-        pet_file=pet_file,
-        sbref_files=sbref_files,
+        pet_file=pet_file
     )
     initial_petref_wf.inputs.inputnode.dummy_scans = config.workflow.dummy_scans
 
     # Select validated PET files (orientations checked or corrected)
     select_pet = pe.Node(niu.Select(), name="select_pet")
-
-    # Top-level BOLD splitter
-    bold_split = pe.Node(
-        FSLSplit(dimension="t"), name="bold_split", mem_gb=mem_gb["filesize"] * 3
-    )
 
     # HMC on the PET
     pet_hmc_wf = init_pet_hmc_wf(
@@ -395,7 +341,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         use_compression=False,
     )
 
-    # apply BOLD registration to T1w
+    # apply PET registration to T1w
     pet_t1_trans_wf = init_pet_t1_trans_wf(
         name="pet_t1_trans_wf",
         freesurfer=freesurfer,
@@ -406,30 +352,21 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     pet_t1_trans_wf.inputs.inputnode.fieldwarp = "identity"
 
     # get confounds
-    bold_confounds_wf = init_bold_confs_wf(
+    pet_confounds_wf = init_pet_confs_wf(
         mem_gb=mem_gb["largemem"],
         metadata=metadata,
         freesurfer=freesurfer,
-        regressors_all_comps=config.workflow.regressors_all_comps,
         regressors_fd_th=config.workflow.regressors_fd_th,
         regressors_dvars_th=config.workflow.regressors_dvars_th,
-        name="bold_confounds_wf",
+        name="pet_confounds_wf",
     )
-    bold_confounds_wf.get_node("inputnode").inputs.t1_transform_flags = [False]
+    pet_confounds_wf.get_node("inputnode").inputs.t1_transform_flags = [False]
 
     bold_final = pe.Node(
         niu.IdentityInterface(fields=["bold", "boldref", "mask", "bold_echos"]),
         name="bold_final"
     )
 
-    # Generate a final BOLD reference
-    # This BOLD references *does not use* single-band reference images.
-    final_boldref_wf = init_bold_reference_wf(
-        name="final_boldref_wf",
-        omp_nthreads=omp_nthreads,
-        multiecho=multiecho,
-    )
-    final_boldref_wf.__desc__ = None  # Unset description to avoid second appearance
 
     # MAIN WORKFLOW STRUCTURE #######################################################
     # fmt:off
@@ -438,48 +375,46 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         (inputnode, t1w_brain, [("t1w_preproc", "in_file"),
                                 ("t1w_mask", "in_mask")]),
         # Select validated bold files per-echo
-        (initial_boldref_wf, select_bold, [("outputnode.all_bold_files", "inlist")]),
-        # BOLD buffer has slice-time corrected if it was run, original otherwise
-        (boldbuffer, bold_split, [("bold_file", "in_file")]),
+        (initial_petref_wf, select_pet, [("outputnode.all_pet_files", "inlist")]),
         # HMC
-        (initial_boldref_wf, bold_hmc_wf, [
+        (initial_petref_wf, pet_hmc_wf, [
             ("outputnode.raw_ref_image", "inputnode.raw_ref_image"),
-            ("outputnode.bold_file", "inputnode.bold_file"),
+            ("outputnode.pet_file", "inputnode.pet_file"),
         ]),
-        # EPI-T1w registration workflow
-        (inputnode, bold_reg_wf, [
+        # PET-T1w registration workflow
+        (inputnode, pet_reg_wf, [
             ("t1w_dseg", "inputnode.t1w_dseg"),
             # Undefined if --fs-no-reconall, but this is safe
             ("subjects_dir", "inputnode.subjects_dir"),
             ("subject_id", "inputnode.subject_id"),
             ("fsnative2t1w_xfm", "inputnode.fsnative2t1w_xfm"),
         ]),
-        (bold_final, bold_reg_wf, [
-            ("boldref", "inputnode.ref_bold_brain")]),
-        (t1w_brain, bold_reg_wf, [("out_file", "inputnode.t1w_brain")]),
-        (inputnode, bold_t1_trans_wf, [
-            ("bold_file", "inputnode.name_source"),
+        (pet_final, bold_reg_wf, [
+            ("petref", "inputnode.ref_pet_brain")]),
+        (t1w_brain, pet_reg_wf, [("out_file", "inputnode.t1w_brain")]),
+        (inputnode, pet_t1_trans_wf, [
+            ("pet_file", "inputnode.name_source"),
             ("t1w_mask", "inputnode.t1w_mask"),
             ("t1w_aseg", "inputnode.t1w_aseg"),
             ("t1w_aparc", "inputnode.t1w_aparc"),
         ]),
-        (t1w_brain, bold_t1_trans_wf, [("out_file", "inputnode.t1w_brain")]),
-        (bold_reg_wf, outputnode, [
-            ("outputnode.itk_bold_to_t1", "bold2anat_xfm"),
-            ("outputnode.itk_t1_to_bold", "anat2bold_xfm"),
+        (t1w_brain, pet_t1_trans_wf, [("out_file", "inputnode.t1w_brain")]),
+        (pet_reg_wf, outputnode, [
+            ("outputnode.itk_pet_to_t1", "pet2anat_xfm"),
+            ("outputnode.itk_t1_to_pet", "anat2pet_xfm"),
         ]),
-        (bold_reg_wf, bold_t1_trans_wf, [
-            ("outputnode.itk_bold_to_t1", "inputnode.itk_bold_to_t1"),
+        (pet_reg_wf, pet_t1_trans_wf, [
+            ("outputnode.itk_pet_to_t1", "inputnode.itk_pet_to_t1"),
         ]),
-        (bold_final, bold_t1_trans_wf, [
-            ("mask", "inputnode.ref_bold_mask"),
-            ("boldref", "inputnode.ref_bold_brain"),
+        (pet_final, pet_t1_trans_wf, [
+            ("mask", "inputnode.ref_pet_mask"),
+            ("petref", "inputnode.ref_pet_brain"),
         ]),
-        (bold_t1_trans_wf, outputnode, [
-            ("outputnode.bold_t1", "bold_t1"),
-            ("outputnode.bold_t1_ref", "bold_t1_ref"),
-            ("outputnode.bold_aseg_t1", "bold_aseg_t1"),
-            ("outputnode.bold_aparc_t1", "bold_aparc_t1"),
+        (pet_t1_trans_wf, outputnode, [
+            ("outputnode.pet_t1", "pet_t1"),
+            ("outputnode.pet_t1_ref", "pet_t1_ref"),
+            ("outputnode.pet_aseg_t1", "pet_aseg_t1"),
+            ("outputnode.pet_aparc_t1", "pet_aparc_t1"),
         ]),
         # Connect bold_confounds_wf
         (inputnode, bold_confounds_wf, [

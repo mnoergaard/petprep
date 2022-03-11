@@ -38,11 +38,11 @@ from templateflow.api import get as get_template
 from ...config import DEFAULT_MEMORY_MIN_GB
 from ...interfaces import DerivativesDataSink
 from ...interfaces.confounds import (
-    GatherConfounds, ICAConfounds, FMRISummary, RenameACompCor, FilterDropped,
+    GatherConfounds, PETSummary,
 )
 
 
-def init_bold_confs_wf(
+def init_pet_confs_wf(
     mem_gb,
     metadata,
     regressors_all_comps,
@@ -149,10 +149,7 @@ def init_bold_confs_wf(
     from niworkflows.interfaces.images import SignalExtraction
     from niworkflows.interfaces.reportlets.masks import ROIsPlot
     from niworkflows.interfaces.nibabel import ApplyMask, Binarize
-    from niworkflows.interfaces.patches import (
-        RobustACompCor as ACompCor,
-        RobustTCompCor as TCompCor,
-    )
+   
     from niworkflows.interfaces.plotting import (
         CompCorVariancePlot, ConfoundsCorrelationPlot
     )
@@ -261,9 +258,6 @@ Frames that exceeded a threshold of {regressors_fd_th} mm FD or
         tcompcor.inputs.repetition_time = metadata['RepetitionTime']
         acompcor.inputs.repetition_time = metadata['RepetitionTime']
 
-    # Split aCompCor results into a_comp_cor, c_comp_cor, w_comp_cor
-    rename_acompcor = pe.Node(RenameACompCor(), name="rename_acompcor")
-
     # Global and segment regressors
     signals_class_labels = [
         "global_signal", "csf", "white_matter", "csf_wm", "tcompcor",
@@ -287,24 +281,6 @@ Frames that exceeded a threshold of {regressors_fd_th} mm FD or
         AddTSVHeader(columns=["rmsd"]),
         name="add_rmsd_header", mem_gb=0.01, run_without_submitting=True)
     concat = pe.Node(GatherConfounds(), name="concat", mem_gb=0.01, run_without_submitting=True)
-
-    # CompCor metadata
-    tcc_metadata_filter = pe.Node(FilterDropped(), name="tcc_metadata_filter")
-    acc_metadata_filter = pe.Node(FilterDropped(), name="acc_metadata_filter")
-    tcc_metadata_fmt = pe.Node(
-        TSV2JSON(index_column='component', drop_columns=['mask'], output=None,
-                 additional_metadata={'Method': 'tCompCor'}, enforce_case=True),
-        name='tcc_metadata_fmt')
-    acc_metadata_fmt = pe.Node(
-        TSV2JSON(index_column='component', output=None,
-                 additional_metadata={'Method': 'aCompCor'}, enforce_case=True),
-        name='acc_metadata_fmt')
-    mrg_conf_metadata = pe.Node(niu.Merge(3), name='merge_confound_metadata',
-                                run_without_submitting=True)
-    mrg_conf_metadata.inputs.in3 = {label: {'Method': 'Mean'}
-                                    for label in signals_class_labels}
-    mrg_conf_metadata2 = pe.Node(DictMerge(), name='merge_confound_metadata2',
-                                 run_without_submitting=True)
 
     # Expand model to include derivatives and quadratics
     model_expand = pe.Node(ExpandModel(

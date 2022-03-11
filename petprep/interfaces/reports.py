@@ -177,7 +177,7 @@ class SubjectSummary(SummaryInterface):
             freesurfer_status=freesurfer_status)
 
 
-class FunctionalSummaryInputSpec(BaseInterfaceInputSpec):
+class PETSummaryInputSpec(BaseInterfaceInputSpec):
     slice_timing = traits.Enum(False, True, 'TooShort', usedefault=True,
                                desc='Slice timing correction used')
     distortion_correction = traits.Str(desc='Susceptibility distortion correction method',
@@ -200,8 +200,8 @@ class FunctionalSummaryInputSpec(BaseInterfaceInputSpec):
     orientation = traits.Str(mandatory=True, desc='Orientation of the voxel axes')
 
 
-class FunctionalSummary(SummaryInterface):
-    input_spec = FunctionalSummaryInputSpec
+class PETSummary(SummaryInterface):
+    input_spec = PETSummaryInputSpec
 
     def _generate_segment(self):
         dof = self.inputs.registration_dof

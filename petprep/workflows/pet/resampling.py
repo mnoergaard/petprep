@@ -36,7 +36,7 @@ from nipype.interfaces import utility as niu, freesurfer as fs
 import nipype.interfaces.workbench as wb
 
 
-def init_bold_surf_wf(mem_gb, surface_spaces, medial_surface_nan, name="bold_surf_wf"):
+def init_pet_surf_wf(mem_gb, surface_spaces, medial_surface_nan, name="pet_surf_wf"):
     """
     Sample functional images to FreeSurfer surfaces.
 
@@ -203,12 +203,12 @@ The BOLD time-series were resampled onto the following surfaces
     return workflow
 
 
-def init_bold_std_trans_wf(
+def init_pet_std_trans_wf(
     freesurfer,
     mem_gb,
     omp_nthreads,
     spaces,
-    name="bold_std_trans_wf",
+    name="pet_std_trans_wf",
     use_compression=True,
 ):
     """
@@ -517,7 +517,7 @@ preprocessed BOLD runs*: {tpl}.
     return workflow
 
 
-def init_bold_preproc_trans_wf(
+def init_pet_preproc_trans_wf(
     mem_gb,
     omp_nthreads,
     name="bold_preproc_trans_wf",

@@ -25,9 +25,9 @@ import numpy as np
 from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu
 
-from fmriprep import config
-from fmriprep.config import DEFAULT_MEMORY_MIN_GB
-from fmriprep.interfaces import DerivativesDataSink
+from petprep import config
+from petprep.config import DEFAULT_MEMORY_MIN_GB
+from petprep.interfaces import DerivativesDataSink
 
 
 def prepare_timing_parameters(metadata):
@@ -112,7 +112,7 @@ def prepare_timing_parameters(metadata):
     return timing_parameters
 
 
-def init_func_derivatives_wf(
+def init_pet_derivatives_wf(
     bids_root,
     cifti_output,
     freesurfer,
@@ -492,7 +492,7 @@ def init_func_derivatives_wf(
     return workflow
 
 
-def init_bold_preproc_report_wf(mem_gb, reportlets_dir, name='bold_preproc_report_wf'):
+def init_pet_preproc_report_wf(mem_gb, reportlets_dir, name='bold_preproc_report_wf'):
     """
     Generate a visual report.
 

@@ -20,15 +20,15 @@ from .registration import (
     init_pet_t1_trans_wf,
     init_pet_reg_wf,
 )
-from .resampling import (
-    init_pet_std_trans_wf,
-    init_pet_surf_wf,
-    init_pet_preproc_trans_wf,
-)
+#from .resampling import (
+#    init_pet_std_trans_wf,
+#    init_pet_surf_wf,
+#    init_pet_preproc_trans_wf,
+#)
 
-from .confounds import (
-    init_pet_confs_wf
-)
+#from .confounds import (
+#    init_pet_confs_wf
+#)
 
 __all__ = [
     'init_pet_confs_wf',
