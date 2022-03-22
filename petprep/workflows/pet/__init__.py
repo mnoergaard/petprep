@@ -31,7 +31,6 @@ from .registration import (
 #)
 
 __all__ = [
-    'init_pet_confs_wf',
     'init_pet_hmc_wf',
     'init_pet_std_trans_wf',
     'init_pet_preproc_trans_wf',
