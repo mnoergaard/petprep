@@ -49,7 +49,7 @@ def init_pet_confs_wf(
     regressors_dvars_th,
     regressors_fd_th,
     freesurfer=False,
-    name="bold_confs_wf",
+    name="pet_confs_wf",
 ):
     """
     Build a workflow to generate and write out confounding signals.
@@ -233,39 +233,6 @@ Frames that exceeded a threshold of {regressors_fd_th} mm FD or
                                iterfield=["in_file"])
     acc_msk_bin = pe.MapNode(Binarize(thresh_low=0.99), name='acc_msk_bin',
                              iterfield=["in_file"])
-    acompcor = pe.Node(
-        ACompCor(components_file='acompcor.tsv', header_prefix='a_comp_cor_', pre_filter='cosine',
-                 save_pre_filter=True, save_metadata=True, mask_names=['CSF', 'WM', 'combined'],
-                 merge_method='none', failure_mode='NaN'),
-        name="acompcor", mem_gb=mem_gb)
-
-    tcompcor = pe.Node(
-        TCompCor(components_file='tcompcor.tsv', header_prefix='t_comp_cor_', pre_filter='cosine',
-                 save_pre_filter=True, save_metadata=True, percentile_threshold=.02,
-                 failure_mode='NaN'),
-        name="tcompcor", mem_gb=mem_gb)
-
-    # Set number of components
-    if regressors_all_comps:
-        acompcor.inputs.num_components = 'all'
-        tcompcor.inputs.num_components = 'all'
-    else:
-        acompcor.inputs.variance_threshold = 0.5
-        tcompcor.inputs.variance_threshold = 0.5
-
-    # Set TR if present
-    if 'RepetitionTime' in metadata:
-        tcompcor.inputs.repetition_time = metadata['RepetitionTime']
-        acompcor.inputs.repetition_time = metadata['RepetitionTime']
-
-    # Global and segment regressors
-    signals_class_labels = [
-        "global_signal", "csf", "white_matter", "csf_wm", "tcompcor",
-    ]
-    merge_rois = pe.Node(niu.Merge(3, ravel_inputs=True), name='merge_rois',
-                         run_without_submitting=True)
-    signals = pe.Node(SignalExtraction(class_labels=signals_class_labels),
-                      name="signals", mem_gb=mem_gb)
 
     # Arrange confounds
     add_dvars_header = pe.Node(

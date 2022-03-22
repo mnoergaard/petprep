@@ -43,7 +43,6 @@ from ...interfaces import DerivativesDataSink
 from ...interfaces.reports import PETSummary
 
 # PET workflows
-from .confounds import init_bold_confs_wf, init_carpetplot_wf
 from .hmc import init_pet_hmc_wf
 from .registration import init_pet_t1_trans_wf, init_pet_reg_wf
 #from .resampling import (
@@ -301,13 +300,11 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             ("pet_native", "inputnode.pet_native"),
             ("pet_native_ref", "inputnode.pet_native_ref"),
             ("pet_mask_native", "inputnode.pet_mask_native"),
-            ("confounds", "inputnode.confounds"),
             ("surfaces", "inputnode.surf_files"),
             ("pet_cifti", "inputnode.pet_cifti"),
             ("cifti_variant", "inputnode.cifti_variant"),
             ("cifti_metadata", "inputnode.cifti_metadata"),
-            ("cifti_density", "inputnode.cifti_density"),
-            ("confounds_metadata", "inputnode.confounds_metadata"),
+            ("cifti_density", "inputnode.cifti_density")
         ]),
     ])
     # fmt:on
@@ -351,18 +348,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     )
     pet_t1_trans_wf.inputs.inputnode.fieldwarp = "identity"
 
-    # get confounds
-    pet_confounds_wf = init_pet_confs_wf(
-        mem_gb=mem_gb["largemem"],
-        metadata=metadata,
-        freesurfer=freesurfer,
-        regressors_fd_th=config.workflow.regressors_fd_th,
-        regressors_dvars_th=config.workflow.regressors_dvars_th,
-        name="pet_confounds_wf",
-    )
-    pet_confounds_wf.get_node("inputnode").inputs.t1_transform_flags = [False]
-
-    bold_final = pe.Node(
+    pet_final = pe.Node(
         niu.IdentityInterface(fields=["bold", "boldref", "mask", "bold_echos"]),
         name="bold_final"
     )
@@ -389,7 +375,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             ("subject_id", "inputnode.subject_id"),
             ("fsnative2t1w_xfm", "inputnode.fsnative2t1w_xfm"),
         ]),
-        (pet_final, bold_reg_wf, [
+        (pet_final, pet_reg_wf, [
             ("petref", "inputnode.ref_pet_brain")]),
         (t1w_brain, pet_reg_wf, [("out_file", "inputnode.t1w_brain")]),
         (inputnode, pet_t1_trans_wf, [
