@@ -502,13 +502,6 @@ https://petprep.readthedocs.io/en/%s/spaces.html"""
         "improve PETPREP and provides an indicator of real "
         "world usage crucial for obtaining funding.",
     )
-    g_other.add_argument(
-        "--debug",
-        action="store",
-        nargs="+",
-        choices=config.DEBUG_MODES + ("all",),
-        help="Debug mode(s) to enable. 'all' is alias for all available modes.",
-    )
 
     g_other.add_argument(
         "--sloppy",
