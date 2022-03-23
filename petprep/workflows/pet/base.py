@@ -140,10 +140,10 @@ def init_pet_preproc_wf(pet_file):
 
     """
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
-    from niworkflows.func.util import init_pet_reference_wf
     from niworkflows.interfaces.nibabel import ApplyMask
     from niworkflows.interfaces.utility import KeySelect, DictMerge
 
+<<<<<<< Updated upstream
     if nb.load(
         pet_file[0] if isinstance(pet_file, (list, tuple)) else pet_file
     ).shape[3:] <= (5 - config.execution.sloppy,):
@@ -152,8 +152,10 @@ def init_pet_preproc_wf(pet_file):
         )
         return
 
+=======
+>>>>>>> Stashed changes
     mem_gb = {"filesize": 1, "resampled": 1, "largemem": 1}
-    bold_tlen = 10
+    pet_tlen = 10
 
     # Have some options handy
     omp_nthreads = config.nipype.omp_nthreads
@@ -161,7 +163,7 @@ def init_pet_preproc_wf(pet_file):
     spaces = config.workflow.spaces
     petprep_dir = str(config.execution.petprep_dir)
 
-    # Extract BIDS entities and metadata from BOLD file(s)
+    # Extract BIDS entities and metadata from PET file(s)
     entities = extract_entities(pet_file)
     layout = config.execution.layout
 

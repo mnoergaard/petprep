@@ -36,7 +36,7 @@ class Report(_Report):
         self.packagename = self.packagename or settings.get("package", None)
 
         # Removed from here: Appending self.packagename to self.root and self.out_dir
-        # In this version, pass reportlets_dir and out_dir with fmriprep in the path.
+        # In this version, pass reportlets_dir and out_dir with petprep in the path.
 
         if self.subject_id is not None:
             self.root = self.root / "sub-{}".format(self.subject_id)
@@ -72,12 +72,12 @@ def run_reports(
     >>> test_data_path = resource_filename('fmriprep', 'data/tests/work')
     >>> testdir = Path(tmpdir)
     >>> data_dir = copytree(test_data_path, str(testdir / 'work'))
-    >>> (testdir / 'fmriprep').mkdir(parents=True, exist_ok=True)
+    >>> (testdir / 'petprep').mkdir(parents=True, exist_ok=True)
 
     .. doctest::
 
-    >>> run_reports(testdir / 'out', '01', 'madeoutuuid', packagename='fmriprep',
-    ...             reportlets_dir=testdir / 'work' / 'reportlets' / 'fmriprep')
+    >>> run_reports(testdir / 'out', '01', 'madeoutuuid', packagename='petprep',
+    ...             reportlets_dir=testdir / 'work' / 'reportlets' / 'petprep')
     0
 
     .. testcleanup::
