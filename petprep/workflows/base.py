@@ -293,7 +293,7 @@ It is released under the [CC0]\
         ])
     else:
         workflow.connect([
-            (bidssrc, bids_info, [(('pet', fix_multi_T1w_source_name), 'in_file')]),
+            (bidssrc, bids_info, [(('t1w', fix_multi_T1w_source_name), 'in_file')]),
             (anat_preproc_wf, summary, [('outputnode.t1w_preproc', 't1w')]),
             (anat_preproc_wf, ds_report_summary, [('outputnode.t1w_preproc', 'source_file')]),
             (anat_preproc_wf, ds_report_about, [('outputnode.t1w_preproc', 'source_file')]),
