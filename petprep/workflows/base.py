@@ -162,8 +162,10 @@ def init_single_subject_wf(subject_id):
     # Make sure we always go through these two checks
     if not anat_only and not subject_data['pet']:
         raise RuntimeError(
-            "No PET images found for participant {} and task {}. "
-            "All workflows require PET images.")
+            "No PET images found for participant {}. "
+            "All workflows require PET images.".format(
+                subject_id)
+        )
 
     if anat_derivatives:
         from smriprep.utils.bids import collect_derivatives
