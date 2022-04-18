@@ -77,7 +77,7 @@ def init_pet_preproc_wf(pet_file):
 
     Inputs
     ------
-    bold_file
+    pet_file
         PET NIfTI file
     t1w_preproc
         Bias-corrected structural template image
@@ -130,7 +130,7 @@ def init_pet_preproc_wf(pet_file):
     --------
 
     * :py:func:`~niworkflows.func.util.init_pet_reference_wf`
-    * :py:func:`~petprep.workflows.pet.hmc.init_bold_hmc_wf`
+    * :py:func:`~petprep.workflows.pet.hmc.init_pet_hmc_wf`
     * :py:func:`~petprep.workflows.pet.registration.init_pet_t1_trans_wf`
     * :py:func:`~petprep.workflows.pet.registration.init_pet_reg_wf`
     * :py:func:`~petprep.workflows.pet.confounds.init_pet_confs_wf`
@@ -143,7 +143,6 @@ def init_pet_preproc_wf(pet_file):
     from niworkflows.interfaces.nibabel import ApplyMask
     from niworkflows.interfaces.utility import KeySelect, DictMerge
 
-<<<<<<< Updated upstream
     if nb.load(
         pet_file[0] if isinstance(pet_file, (list, tuple)) else pet_file
     ).shape[3:] <= (5 - config.execution.sloppy,):
@@ -152,8 +151,6 @@ def init_pet_preproc_wf(pet_file):
         )
         return
 
-=======
->>>>>>> Stashed changes
     mem_gb = {"filesize": 1, "resampled": 1, "largemem": 1}
     pet_tlen = 10
 

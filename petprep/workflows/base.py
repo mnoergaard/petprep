@@ -140,7 +140,7 @@ def init_single_subject_wf(subject_id):
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
     from niworkflows.interfaces.bids import BIDSInfo, BIDSDataGrabber
     from niworkflows.interfaces.nilearn import NILEARN_VERSION
-    from niworkflows.utils.bids import collect_data
+    from ..utils.bids import collect_data
     from niworkflows.utils.misc import fix_multi_T1w_source_name
     from niworkflows.utils.spaces import Reference
     from smriprep.workflows.anatomical import init_anat_preproc_wf
@@ -149,8 +149,6 @@ def init_single_subject_wf(subject_id):
     subject_data = collect_data(
         config.execution.layout,
         subject_id,
-        config.execution.task_id,
-        config.execution.echo_idx,
         bids_filters=config.execution.bids_filters)[0]
 
     if 'flair' in config.workflow.ignore:
@@ -163,12 +161,9 @@ def init_single_subject_wf(subject_id):
     spaces = config.workflow.spaces
     # Make sure we always go through these two checks
     if not anat_only and not subject_data['pet']:
-        task_id = config.execution.task_id
         raise RuntimeError(
             "No PET images found for participant {} and task {}. "
-            "All workflows require PET images.".format(
-                subject_id, task_id if task_id else '<all>')
-        )
+            "All workflows require PET images.")
 
     if anat_derivatives:
         from smriprep.utils.bids import collect_derivatives
