@@ -65,8 +65,6 @@ def init_pet_hmc_wf(mem_gb, omp_nthreads, name='pet_hmc_wf'):
     ------
     pet_file
         PET NIfTI file
-    raw_ref_image
-        Reference image to which PET is motion corrected
 
     Outputs
     -------

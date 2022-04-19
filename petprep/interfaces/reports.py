@@ -102,7 +102,7 @@ class SubjectSummaryInputSpec(BaseInterfaceInputSpec):
     t2w = InputMultiObject(File(exists=True), desc='T2w structural images')
     subjects_dir = Directory(desc='FreeSurfer subjects directory')
     subject_id = Str(desc='Subject ID')
-    bold = InputMultiObject(traits.Either(
+    pet = InputMultiObject(traits.Either(
         File(exists=True), traits.List(File(exists=True))),
         desc='BOLD functional series')
     std_spaces = traits.List(Str, desc='list of standard spaces')
@@ -130,6 +130,7 @@ class SubjectSummary(SummaryInterface):
             '(?P<subject_id>sub-[a-zA-Z0-9]+)'
             '(_(?P<session_id>ses-[a-zA-Z0-9]+))?'
             '(_(?P<task_id>task-[a-zA-Z0-9]+))?'
+            '(_(?P<trc_id>trc-[a-zA-Z0-9]+))?'
             '(_(?P<acq_id>acq-[a-zA-Z0-9]+))?'
             '(_(?P<rec_id>rec-[a-zA-Z0-9]+))?'
             '(_(?P<run_id>run-[a-zA-Z0-9]+))?')
@@ -144,18 +145,18 @@ class SubjectSummary(SummaryInterface):
             if recon.cmdline.startswith('echo'):
                 freesurfer_status = 'Pre-existing directory'
             else:
-                freesurfer_status = 'Run by fMRIPrep'
+                freesurfer_status = 'Run by PETPrep'
 
         t2w_seg = ''
         if self.inputs.t2w:
             t2w_seg = '(+ {:d} T2-weighted)'.format(len(self.inputs.t2w))
 
         # Add list of tasks with number of runs
-        bold_series = self.inputs.bold if isdefined(self.inputs.bold) else []
-        bold_series = [s[0] if isinstance(s, list) else s for s in bold_series]
+        pet_series = self.inputs.pet if isdefined(self.inputs.pet) else []
+        pet_series = [s[0] if isinstance(s, list) else s for s in pet_series]
 
         counts = Counter(BIDS_NAME.search(series).groupdict()['task_id'][5:]
-                         for series in bold_series)
+                         for series in pet_series)
 
         tasks = ''
         if counts:
@@ -170,7 +171,7 @@ class SubjectSummary(SummaryInterface):
             subject_id=self.inputs.subject_id,
             n_t1s=len(self.inputs.t1w),
             t2w=t2w_seg,
-            n_bold=len(bold_series),
+            n_pet=len(pet_series),
             tasks=tasks,
             std_spaces=', '.join(self.inputs.std_spaces),
             nstd_spaces=', '.join(self.inputs.nstd_spaces),

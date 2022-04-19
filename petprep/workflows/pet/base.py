@@ -45,11 +45,11 @@ from ...interfaces.reports import PETSummary
 # PET workflows
 from .hmc import init_pet_hmc_wf
 from .registration import init_pet_t1_trans_wf, init_pet_reg_wf
-#from .resampling import (
-#    init_pet_surf_wf,
-#    init_pet_std_trans_wf,
-#    init_pet_preproc_trans_wf,
-#)
+from .resampling import (
+    init_pet_surf_wf,
+    init_pet_std_trans_wf,
+    init_pet_preproc_trans_wf,
+)
 from .outputs import init_pet_derivatives_wf
 
 
