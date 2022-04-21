@@ -29,7 +29,7 @@ Head-Motion Estimation and Correction (HMC) of PET images
 """
 
 from nipype.pipeline import engine as pe
-from nipype.interfaces import utility as niu, fsl
+from nipype.interfaces import utility as niu, fsl, freesurfer as fs
 
 from ...config import DEFAULT_MEMORY_MIN_GB
 

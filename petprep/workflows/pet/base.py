@@ -143,13 +143,13 @@ def init_pet_preproc_wf(pet_file):
     from niworkflows.interfaces.nibabel import ApplyMask
     from niworkflows.interfaces.utility import KeySelect, DictMerge
 
-    if nb.load(
-        pet_file[0] if isinstance(pet_file, (list, tuple)) else pet_file
-    ).shape[3:] <= (5 - config.execution.sloppy,):
-        config.loggers.workflow.warning(
-            f"Too short PET series (<= 5 timepoints). Skipping processing of <{pet_file}>."
-        )
-        return
+    # if nb.load(
+    #     pet_file[0] if isinstance(pet_file, (list, tuple)) else pet_file
+    # ).shape[3:] <= (5 - config.execution.sloppy,):
+    #     config.loggers.workflow.warning(
+    #         f"Too short PET series (<= 5 timepoints). Skipping processing of <{pet_file}>."
+    #     )
+    #     return
 
     mem_gb = {"filesize": 1, "resampled": 1, "largemem": 1}
     pet_tlen = 10
@@ -174,15 +174,15 @@ def init_pet_preproc_wf(pet_file):
     ref_orientation = get_img_orientation(ref_file)
 
     if os.path.isfile(ref_file):
-        bold_tlen, mem_gb = _create_mem_gb(ref_file)
+        pet_tlen, mem_gb = _create_mem_gb(ref_file)
 
     wf_name = _get_wf_name(ref_file)
     config.loggers.workflow.debug(
-        "Creating bold processing workflow for <%s> (%.2f GB / %d TRs). "
+        "Creating PET processing workflow for <%s> (%.2f GB / %d TRs). "
         "Memory resampled/largemem=%.2f/%.2f GB.",
         ref_file,
         mem_gb["filesize"],
-        bold_tlen,
+        pet_tlen,
         mem_gb["resampled"],
         mem_gb["largemem"],
     )
@@ -308,7 +308,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     ])
     # fmt:on
 
-    # Generate a tentative boldref
+    # Generate a tentative ref
     initial_petref_wf = init_pet_reference_wf(
         name="initial_petref_wf",
         omp_nthreads=omp_nthreads,
@@ -324,7 +324,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         name="pet_hmc_wf", mem_gb=mem_gb["filesize"], omp_nthreads=omp_nthreads
     )
 
-    # calculate BOLD registration to T1w
+    # calculate PET registration to T1w
     pet_reg_wf = init_pet_reg_wf(
         pet2t1w_dof=config.workflow.pet2t1w_dof,
         pet2t1w_init=config.workflow.pet2t1w_init,
@@ -349,7 +349,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
 
     pet_final = pe.Node(
         niu.IdentityInterface(fields=["bold", "boldref", "mask", "bold_echos"]),
-        name="bold_final"
+        name="pet_final"
     )
 
 
