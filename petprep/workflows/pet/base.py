@@ -986,16 +986,16 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     return workflow
 
 
-def _create_mem_gb(bold_fname):
-    bold_size_gb = os.path.getsize(bold_fname) / (1024 ** 3)
-    bold_tlen = nb.load(bold_fname).shape[-1]
+def _create_mem_gb(pet_fname):
+    pet_size_gb = os.path.getsize(pet_fname) / (1024 ** 3)
+    pet_tlen = nb.load(pet_fname).shape[-1]
     mem_gb = {
-        "filesize": bold_size_gb,
-        "resampled": bold_size_gb * 4,
-        "largemem": bold_size_gb * (max(bold_tlen / 100, 1.0) + 4),
+        "filesize": pet_size_gb,
+        "resampled": pet_size_gb * 4,
+        "largemem": pet_size_gb * (max(pet_tlen / 100, 1.0) + 4),
     }
 
-    return bold_tlen, mem_gb
+    return pet_tlen, mem_gb
 
 
 def _get_wf_name(pet_fname):
