@@ -167,10 +167,11 @@ def init_pet_preproc_wf(pet_file):
     # Extract metadata
     all_metadata = [layout.get_metadata(fname) for fname in listify(pet_file)]
 
-    # Take first file as reference
-    ref_file = pop_file(pet_file)
+    # Extract PET metadata
     metadata = all_metadata[0]
-    # get original image orientation
+    
+    # get original image orientation 
+    ref_file = pop_file(pet_file)
     ref_orientation = get_img_orientation(ref_file)
 
     if os.path.isfile(ref_file):
@@ -306,14 +307,6 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     ])
     # fmt:on
 
-    # Generate a tentative ref
-    initial_petref_wf = init_pet_reference_wf(
-        name="initial_petref_wf",
-        omp_nthreads=omp_nthreads,
-        pet_file=pet_file
-    )
-    initial_petref_wf.inputs.inputnode.dummy_scans = config.workflow.dummy_scans
-
     # Select validated PET files (orientations checked or corrected)
     select_pet = pe.Node(niu.Select(), name="select_pet")
 
@@ -321,6 +314,13 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     pet_hmc_wf = init_pet_hmc_wf(
         mem_gb=mem_gb["filesize"], omp_nthreads=omp_nthreads, metadata=metadata,
         name="pet_hmc_wf"
+    )
+    
+    # Generate a tentative ref
+    initial_petref_wf = init_pet_reference_wf(
+        name="initial_petref_wf",
+        omp_nthreads=omp_nthreads,
+        pet_file=pet_file
     )
 
     # calculate PET registration to T1w
