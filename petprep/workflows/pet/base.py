@@ -248,9 +248,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                 "cifti_metadata",
                 "cifti_density",
                 "surfaces",
-                "confounds",
-                "nonaggr_denoised_file",
-                "confounds_metadata",
+                "hmc_confounds"
             ]
         ),
         name="outputnode",
