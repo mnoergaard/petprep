@@ -319,7 +319,8 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
 
     # HMC on the PET
     pet_hmc_wf = init_pet_hmc_wf(
-        name="pet_hmc_wf", mem_gb=mem_gb["filesize"], omp_nthreads=omp_nthreads
+        mem_gb=mem_gb["filesize"], omp_nthreads=omp_nthreads, metadata=metadata,
+        name="pet_hmc_wf"
     )
 
     # calculate PET registration to T1w
