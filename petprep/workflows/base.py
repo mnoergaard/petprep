@@ -138,9 +138,9 @@ def init_single_subject_wf(subject_id):
 
     """
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
-    from niworkflows.interfaces.bids import BIDSInfo, BIDSDataGrabber
+    from niworkflows.interfaces.bids import BIDSInfo
     from niworkflows.interfaces.nilearn import NILEARN_VERSION
-    from ..utils.bids import collect_data
+    from ..utils.bids import collect_data, BIDSDataGrabber
     from niworkflows.utils.misc import fix_multi_T1w_source_name
     from niworkflows.utils.spaces import Reference
     from smriprep.workflows.anatomical import init_anat_preproc_wf
@@ -247,8 +247,7 @@ It is released under the [CC0]\
         name='ds_report_summary', run_without_submitting=True)
 
     ds_report_about = pe.Node(
-        DerivativesDataSink(base_directory=petprep_dir, desc='about', datatype="figures",
-                            dismiss_entities=("echo",)),
+        DerivativesDataSink(base_directory=petprep_dir, desc='about', datatype="figures",),
         name='ds_report_about', run_without_submitting=True)
 
     # Preprocessing of T1w (includes registration to MNI)
@@ -308,7 +307,7 @@ It is released under the [CC0]\
         return workflow
 
 
-    # Append the functional section to the existing anatomical exerpt
+    # Append the PET section to the existing anatomical exerpt
     # That way we do not need to stream down the number of pet datasets
     pet_pre_desc = """
 PET data preprocessing
