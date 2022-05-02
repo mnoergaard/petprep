@@ -89,7 +89,7 @@ parameters) are estimated before any spatiotemporal filtering using
 """.format(fsl_ver=fsl.Info().version() or '<ver>')
 
     inputnode = pe.Node(
-        niu.IdentityInterface(fields=['pet_file', 'raw_ref_image']),
+        niu.IdentityInterface(fields=['pet_file']),
         name='inputnode')
     outputnode = pe.Node(
         niu.IdentityInterface(
