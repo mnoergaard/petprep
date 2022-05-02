@@ -41,26 +41,21 @@ SUBJECT_TEMPLATE = """\
 \t<ul class="elem-desc">
 \t\t<li>Subject ID: {subject_id}</li>
 \t\t<li>Structural images: {n_t1s:d} T1-weighted {t2w}</li>
-\t\t<li>Functional series: {n_bold:d}</li>
-{tasks}
+\t\t<li>PET series: {n_pet:d}</li>
 \t\t<li>Standard output spaces: {std_spaces}</li>
 \t\t<li>Non-standard output spaces: {nstd_spaces}</li>
 \t\t<li>FreeSurfer reconstruction: {freesurfer_status}</li>
 \t</ul>
 """
 
-FUNCTIONAL_TEMPLATE = """\
+PET_TEMPLATE = """\
 \t\t<details open>
 \t\t<summary>Summary</summary>
 \t\t<ul class="elem-desc">
 \t\t\t<li>Original orientation: {ornt}</li>
-\t\t\t<li>Repetition time (TR): {tr:.03g}s</li>
-\t\t\t<li>Phase-encoding (PE) direction: {pedir}</li>
-\t\t\t<li>{multiecho}</li>
-\t\t\t<li>Slice timing correction: {stc}</li>
-\t\t\t<li>Susceptibility distortion correction: {sdc}</li>
+\t\t\t<li>Injected dose: {injected_dose:.03g} {injected_dose_units}</li>
+\t\t\t<li>Injection type: {tracer_administration}</li>
 \t\t\t<li>Registration: {registration}</li>
-\t\t\t<li>Non-steady-state volumes: {dummy_scan_desc}</li>
 \t\t</ul>
 \t\t</details>
 \t\t<details>
@@ -70,8 +65,8 @@ FUNCTIONAL_TEMPLATE = """\
 """
 
 ABOUT_TEMPLATE = """\t<ul>
-\t\t<li>fMRIPrep version: {version}</li>
-\t\t<li>fMRIPrep command: <code>{command}</code></li>
+\t\t<li>PETPrep version: {version}</li>
+\t\t<li>PETPrep command: <code>{command}</code></li>
 \t\t<li>Date preprocessed: {date}</li>
 \t</ul>
 </div>
@@ -104,7 +99,7 @@ class SubjectSummaryInputSpec(BaseInterfaceInputSpec):
     subject_id = Str(desc='Subject ID')
     pet = InputMultiObject(traits.Either(
         File(exists=True), traits.List(File(exists=True))),
-        desc='BOLD functional series')
+        desc='PET series')
     std_spaces = traits.List(Str, desc='list of standard spaces')
     nstd_spaces = traits.List(Str, desc='list of non-standard spaces')
 
@@ -179,10 +174,6 @@ class SubjectSummary(SummaryInterface):
 
 
 class PETSummaryInputSpec(BaseInterfaceInputSpec):
-    slice_timing = traits.Enum(False, True, 'TooShort', usedefault=True,
-                               desc='Slice timing correction used')
-    distortion_correction = traits.Str(desc='Susceptibility distortion correction method',
-                                       mandatory=True)
     pe_direction = traits.Enum(None, 'i', 'i-', 'j', 'j-', 'k', 'k-', mandatory=True,
                                desc='Phase-encoding direction detected')
     registration = traits.Enum('FSL', 'FreeSurfer', mandatory=True,
@@ -194,10 +185,7 @@ class PETSummaryInputSpec(BaseInterfaceInputSpec):
                                     desc='Whether to initialize registration with the "header"'
                                          ' or by centering the volumes ("register")')
     confounds_file = File(exists=True, desc='Confounds file')
-    tr = traits.Float(desc='Repetition time', mandatory=True)
-    dummy_scans = traits.Either(traits.Int(), None, desc='number of dummy scans specified by user')
-    algo_dummy_scans = traits.Int(desc='number of dummy scans determined by algorithm')
-    echo_idx = traits.List([], usedefault=True, desc="BIDS echo identifiers")
+    injected_dose = traits.Float(desc='Injected dose', mandatory=True)
     orientation = traits.Str(mandatory=True, desc='Orientation of the voxel axes')
 
 
@@ -206,9 +194,7 @@ class PETSummary(SummaryInterface):
 
     def _generate_segment(self):
         dof = self.inputs.registration_dof
-        stc = {True: 'Applied',
-               False: 'Not applied',
-               'TooShort': 'Skipped (too few volumes)'}[self.inputs.slice_timing]
+
         # #TODO: Add a note about registration_init below?
         reg = {
             'FSL': [
@@ -227,42 +213,17 @@ class PETSummary(SummaryInterface):
             with open(self.inputs.confounds_file) as cfh:
                 conflist = cfh.readline().strip('\n').strip()
 
-        dummy_scan_tmp = "{n_dum}"
-        if self.inputs.dummy_scans == self.inputs.algo_dummy_scans:
-            dummy_scan_msg = (
-                ' '.join([dummy_scan_tmp, "(Confirmed: {n_alg} automatically detected)"])
-                .format(n_dum=self.inputs.dummy_scans, n_alg=self.inputs.algo_dummy_scans)
-            )
-        # the number of dummy scans was specified by the user and
-        # it is not equal to the number detected by the algorithm
-        elif self.inputs.dummy_scans is not None:
-            dummy_scan_msg = (
-                ' '.join([dummy_scan_tmp, "(Warning: {n_alg} automatically detected)"])
-                .format(n_dum=self.inputs.dummy_scans, n_alg=self.inputs.algo_dummy_scans)
-            )
-        # the number of dummy scans was not specified by the user
-        else:
-            dummy_scan_msg = dummy_scan_tmp.format(n_dum=self.inputs.algo_dummy_scans)
 
-        multiecho = "Single-echo EPI sequence."
-        n_echos = len(self.inputs.echo_idx)
-        if n_echos == 1:
-            multiecho = (
-                f"Multi-echo EPI sequence: only echo {self.inputs.echo_idx[0]} processed "
-                "in single-echo mode."
-            )
-        if n_echos > 2:
-            multiecho = (f"Multi-echo EPI sequence: {n_echos} echoes.")
 
-        return FUNCTIONAL_TEMPLATE.format(
-            pedir=pedir, stc=stc, sdc=self.inputs.distortion_correction, registration=reg,
-            confounds=re.sub(r'[\t ]+', ', ', conflist), tr=self.inputs.tr,
-            dummy_scan_desc=dummy_scan_msg, multiecho=multiecho, ornt=self.inputs.orientation)
+        return PET_TEMPLATE.format(
+            pedir=pedir,registration=reg,
+            confounds=re.sub(r'[\t ]+', ', ', conflist),
+            ornt=self.inputs.orientation)
 
 
 class AboutSummaryInputSpec(BaseInterfaceInputSpec):
-    version = Str(desc='FMRIPREP version')
-    command = Str(desc='FMRIPREP command')
+    version = Str(desc='PETPREP version')
+    command = Str(desc='PETPREP command')
     # Date not included - update timestamp only if version or command changes
 
 
