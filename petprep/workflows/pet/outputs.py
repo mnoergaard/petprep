@@ -117,11 +117,9 @@ def init_pet_derivatives_wf(
     cifti_output,
     freesurfer,
     all_metadata,
-    multiecho,
     output_dir,
     spaces,
-    use_aroma,
-    name='func_derivatives_wf',
+    name='pet_derivatives_wf',
 ):
     """
     Set up a battery of datasinks to store derivatives in the right location.
@@ -136,8 +134,6 @@ def init_pet_derivatives_wf(
         Whether FreeSurfer anatomical processing was run.
     metadata : :obj:`dict`
         Metadata dictionary associated to the BOLD run.
-    multiecho : :obj:`bool`
-        Derivatives were generated from multi-echo time series.
     output_dir : :obj:`str`
         Where derivatives should be written out to.
     spaces : :py:class:`~niworkflows.utils.spaces.SpatialReferences`
@@ -149,10 +145,8 @@ def init_pet_derivatives_wf(
         the TemplateFlow root directory. Each ``Reference`` may also contain a spec, which is a
         dictionary with template specifications (e.g., a specification of ``{'resolution': 2}``
         would lead to resampling on a 2mm resolution of the space).
-    use_aroma : :obj:`bool`
-        Whether ``--use-aroma`` flag was set.
     name : :obj:`str`
-        This workflow's identifier (default: ``func_derivatives_wf``).
+        This workflow's identifier (default: ``pet_derivatives_wf``).
 
     """
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
@@ -165,10 +159,6 @@ def init_pet_derivatives_wf(
 
     nonstd_spaces = set(spaces.get_nonstandard())
     workflow = Workflow(name=name)
-
-    # BOLD series will generally be unmasked unless multiecho,
-    # as the optimal combination is undefined outside a bounded mask
-    masked = multiecho
 
     inputnode = pe.Node(niu.IdentityInterface(fields=[
         'aroma_noise_ics', 'bold_aparc_std', 'bold_aparc_t1', 'bold_aseg_std',
