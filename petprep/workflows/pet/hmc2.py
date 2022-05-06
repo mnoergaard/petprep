@@ -48,11 +48,15 @@ def init_pet_hmc_wf(mem_gb, omp_nthreads, metadata, name='pet_hmc_wf'):
 
     Outputs
     -------
-    xforms
+    pet_mc_file
         ITKTransform file aligning each volume to ``ref_image``
-    movpar_file
+    hmc_confounds
         MCFLIRT motion parameters, normalized to SPM format (X, Y, Z, Rx, Ry, Rz)
-    rms_file
+    translation
+        Framewise displacement as measured by ``fsl_motion_outliers`` [Jenkinson2002]_.
+    rotation
+        Framewise displacement as measured by ``fsl_motion_outliers`` [Jenkinson2002]_.
+    movement
         Framewise displacement as measured by ``fsl_motion_outliers`` [Jenkinson2002]_.
 
     """
@@ -70,12 +74,20 @@ def init_pet_hmc_wf(mem_gb, omp_nthreads, metadata, name='pet_hmc_wf'):
         """.format(fsl_ver=fsl.Info().version() or '<ver>')
 
     inputnode = pe.Node(
-        niu.IdentityInterface(fields=['pet_file', 'metadata']),
+        niu.IdentityInterface(fields=['pet_file']),
         name='inputnode')
     outputnode = pe.Node(
         niu.IdentityInterface(
             fields=['pet_mc_file', 'hmc_confounds', 'translation', 'rotation', 'movement']),
         name='outputnode')
+    
+    
+    frames_start = metadata['FrameTimesStart']
+    frame_duration = metadata['FrameDuration']
+    mid_frames = frames_start + frame_duration/2
+
+    inputnode.min_frame = next(x for x, val in enumerate(mid_frames)
+                                  if val > 120)   
 
     split_pet = pe.Node(interface = fs.MRIConvert(split = True), 
                      name = "split_pet")
@@ -109,11 +121,6 @@ def init_pet_hmc_wf(mem_gb, omp_nthreads, metadata, name='pet_hmc_wf'):
                             name = "est_trans_rot", 
                             iterfield = ['mat_file'])
     
-    est_min_frame = pe.Node(pe.Function(input_names = ['json_file'],
-                                  output_names = ['min_frame'],
-                                  function = get_min_frame),
-                         name = "est_min_frame")
-    
     upd_frame_list = pe.Node(pe.Function(input_names = ['in_file','min_frame'],
                                    output_names = ['upd_list_frames'],
                                    function = update_list_frames),
@@ -135,28 +142,32 @@ def init_pet_hmc_wf(mem_gb, omp_nthreads, metadata, name='pet_hmc_wf'):
     
     # Connect workflow - init_pet_hmc_wf
     workflow.config['execution']['remove_unnecessary_outputs'] = 'false'
-    workflow.connect([(infosource, selectfiles, [('subject_id', 'subject_id'),('session_id', 'session_id')]), 
-                         (selectfiles, split_pet, [('pet', 'in_file')]),
-                         (selectfiles, est_min_frame, [('json', 'json_file')]),
-                         (split_pet,smooth_frame,[('out_file', 'in_file')]),
-                         (smooth_frame,thres_frame,[('smoothed_file', 'in_file')]),
-                         (thres_frame,upd_frame_list,[('out_file', 'in_file')]),
-                         (est_min_frame,upd_frame_list,[('min_frame', 'min_frame')]),
-                         (upd_frame_list,estimate_motion,[('upd_list_frames', 'in_files')]),
-                         (thres_frame,upd_transform_list,[('out_file', 'in_file')]),
-                         (est_min_frame,upd_transform_list,[('min_frame', 'min_frame')]),
-                         (upd_transform_list,estimate_motion,[('upd_list_transforms', 'transform_outputs')]),
-                         (split_pet,correct_motion,[('out_file', 'source_file')]),
-                         (estimate_motion,correct_motion,[('transform_outputs', 'reg_file')]),
-                         (estimate_motion,correct_motion,[('out_file', 'target_file')]),
-                         (split_pet,correct_motion,[(('out_file', add_mc_ext), 'transformed_file')]),
-                         (correct_motion,concat_frames,[('transformed_file', 'in_files')]),
-                         (estimate_motion,lta2xform,[('transform_outputs', 'in_lta')]),
-                         (estimate_motion,lta2xform,[(('transform_outputs', lta2mat), 'out_fsl')]),
-                         (lta2xform,est_trans_rot,[('out_fsl', 'mat_file')]),
-                         (est_trans_rot,hmc_movement_output,[('translations', 'translations'),('rot_angles', 'rot_angles'),('rotation_translation_matrix','rotation_translation_matrix')]),
-                         (upd_frame_list,hmc_movement_output,[('upd_list_frames', 'in_file')]),
-                         (hmc_movement_output,plot_motion,[('hmc_confounds','in_file')])
+    workflow.connect([
+        (inputnode, split_pet, [('pet', 'in_file')]),
+        (split_pet,smooth_frame,[('out_file', 'in_file')]),
+        (smooth_frame,thres_frame,[('smoothed_file', 'in_file')]),
+        (thres_frame,upd_frame_list,[('out_file', 'in_file')]),
+        (inputnode,upd_frame_list,[('min_frame', 'min_frame')]),
+        (upd_frame_list,estimate_motion,[('upd_list_frames', 'in_files')]),
+        (thres_frame,upd_transform_list,[('out_file', 'in_file')]),
+        (inputnode,upd_transform_list,[('min_frame', 'min_frame')]),
+        (upd_transform_list,estimate_motion,[('upd_list_transforms', 'transform_outputs')]),
+        (split_pet,correct_motion,[('out_file', 'source_file')]),
+        (estimate_motion,correct_motion,[('transform_outputs', 'reg_file')]),
+        (estimate_motion,correct_motion,[('out_file', 'target_file')]),
+        (split_pet,correct_motion,[(('out_file', add_mc_ext), 'transformed_file')]),
+        (correct_motion,concat_frames,[('transformed_file', 'in_files')]),
+        (estimate_motion,lta2xform,[('transform_outputs', 'in_lta')]),
+        (estimate_motion,lta2xform,[(('transform_outputs', lta2mat), 'out_fsl')]),
+        (lta2xform,est_trans_rot,[('out_fsl', 'mat_file')]),
+        (est_trans_rot,hmc_movement_output,[('translations', 'translations'),('rot_angles', 'rot_angles'),('rotation_translation_matrix','rotation_translation_matrix')]),
+        (upd_frame_list,hmc_movement_output,[('upd_list_frames', 'in_file')]),
+        (hmc_movement_output,plot_motion,[('hmc_confounds','in_file')]),
+        (concat_frames, outputnode, [('transformed_file', 'pet_mc_file')]),
+        (hmc_movement_output, outputnode, [('hmc_confounds', 'hmc_confounds')]),
+        (plot_motion, outputnode, [('translation', 'translation')]),
+        (plot_motion, outputnode, [('rotation', 'rotation')]),
+        (plot_motion, outputnode, [('movement', 'movement')])
                          ])
     return workflow
 
