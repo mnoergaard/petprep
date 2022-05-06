@@ -9,32 +9,24 @@ Created on Thu May  5 17:56:52 2022
 from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu, freesurfer as fs
 
-from ...config import DEFAULT_MEMORY_MIN_GB
-
-def init_gtmseg_wf(mem_gb, omp_nthreads, name='gtmseg_wf'):
+def init_gtmseg_wf(name='gtmseg_wf'):
     """
-    Build a workflow to estimate head-motion parameters.
+    Build a workflow to estimate the anatomical segmentation for the 
+    geometric transfer matrix (GTM) partial volume correction
 
-    This workflow estimates the motion parameters to perform
-    :abbr:`HMC (head motion correction)` over the input
-    :abbr:`PET (Positron Emission Tomography)` image.
+    This workflow estimates the anatomical segmentation for the geometric transfer matrix
+    :abbr:`GTM (geometric transfer matrix)` over the FreeSurfer recon-all output
 
     Workflow Graph
         .. workflow::
             :graph2use: orig
             :simple_form: yes
 
-            from petprep.workflows.pet import init_pet_hmc_wf
-            wf = init_pet_hmc_wf(
-                mem_gb=3,
-                omp_nthreads=1)
+            from petprep.workflows.pet.gtmseg import init_pet_hmc_wf
+            wf = init_gtmseg_wf()
 
     Parameters
     ----------
-    mem_gb : :obj:`float`
-        Size of PET file in GB
-    omp_nthreads : :obj:`int`
-        Maximum number of threads an individual process may use
     name : :obj:`str`
         Name of workflow (default: ``gtmseg_wf``)
 
@@ -65,8 +57,7 @@ def init_gtmseg_wf(mem_gb, omp_nthreads, name='gtmseg_wf'):
         name='outputnode')
     
     gtmseg = pe.Node(fs.petsurfer.GTMSeg(),
-                     name="gtmseg",
-                     mem_gb=DEFAULT_MEMORY_MIN_GB)
+                     name="gtmseg")
     
     workflow.connect([
         (inputnode, gtmseg, [('subject_id', 'subject_id'),
