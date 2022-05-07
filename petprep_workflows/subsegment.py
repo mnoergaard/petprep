@@ -13,7 +13,6 @@ from nipype.interfaces.base import (
                                     CommandLineInputSpec, 
                                     File,
                                     traits,
-                                    Directory,
                                     TraitedSpec
                                     )
 import os
