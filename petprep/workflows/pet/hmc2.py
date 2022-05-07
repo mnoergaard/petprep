@@ -61,9 +61,6 @@ def init_pet_hmc_wf(mem_gb, omp_nthreads, metadata, name='pet_hmc_wf'):
 
     """
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
-    import os
-    import nipype.interfaces.freesurfer as fs
-    import nipype.interfaces.fsl as fsl
 
     workflow = Workflow(name=name)
     workflow.__desc__ = """\
@@ -81,10 +78,7 @@ def init_pet_hmc_wf(mem_gb, omp_nthreads, metadata, name='pet_hmc_wf'):
             fields=['pet_mc_file', 'hmc_confounds', 'translation', 'rotation', 'movement']),
         name='outputnode')
     
-    
-    frames_start = metadata['FrameTimesStart']
-    frame_duration = metadata['FrameDuration']
-    mid_frames = frames_start + frame_duration/2
+    mid_frames = metadata['FrameTimesStart'] + metadata['FrameDuration']/2
 
     inputnode.min_frame = next(x for x, val in enumerate(mid_frames)
                                   if val > 120)   
@@ -218,33 +212,7 @@ def lta2mat(in_file):
     """
     
     mat_list = [ext.replace('.lta','.mat') for ext in in_file]
-    return mat_list
-
-def get_min_frame(json_file):
-    
-    """
-        Extract the frame number after 120 seconds of mid frames of dynamic PET data to be used with motion correction
-        
-    Arguments
-    ---------
-    json_file: string
-        path to BIDS json PET file
-    """  
-    
-    import os
-    from os.path import join, isfile
-    import numpy as np
-    import json
-
-    with open(json_file, 'r') as f:
-        info = json.load(f)
-    frames_start = np.array(info['FrameTimesStart'], dtype=float)
-    frames_duration = np.array(info['FrameDuration'], dtype=float)
-    mid_frames = frames_start + frames_duration/2
-
-    min_frame = next(x for x, val in enumerate(mid_frames)
-                                  if val > 120)    
-    return min_frame  
+    return mat_list 
 
 def combine_hmc_outputs(translations, rot_angles, rotation_translation_matrix, in_file):
     
@@ -297,7 +265,6 @@ def plot_motion_outputs(in_file):
     import os
     import pandas as pd
     import numpy as np
-    import nibabel as nib
     import matplotlib.pyplot as plt
     
     confounds = pd.read_csv(in_file, sep='\t')
