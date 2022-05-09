@@ -48,7 +48,7 @@ def mock_config():
     config.init_spaces()
 
     config.execution.work_dir = Path(mkdtemp())
-    config.execution.bids_dir = Path(pkgrf('petprep', 'data/tests/pet002')).absolute()
+    config.execution.bids_dir = Path(pkgrf('petprep', 'data/tests/ds001420')).absolute()
     config.execution.init()
 
     yield
