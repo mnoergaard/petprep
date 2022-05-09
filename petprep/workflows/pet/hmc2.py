@@ -8,6 +8,8 @@ Created on Thu Apr 21 16:39:38 2022
 
 from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu, fsl, freesurfer as fs
+from nipype import Function
+import numpy as np
 
 from ...config import DEFAULT_MEMORY_MIN_GB
 
@@ -60,6 +62,7 @@ def init_pet_hmc_wf(mem_gb, omp_nthreads, metadata, name='pet_hmc_wf'):
         Framewise displacement as measured by ``fsl_motion_outliers`` [Jenkinson2002]_.
 
     """
+    
     from niworkflows.engine.workflows import LiterateWorkflow as Workflow
 
     workflow = Workflow(name=name)
@@ -78,9 +81,9 @@ def init_pet_hmc_wf(mem_gb, omp_nthreads, metadata, name='pet_hmc_wf'):
             fields=['pet_mc_file', 'hmc_confounds', 'translation', 'rotation', 'movement']),
         name='outputnode')
     
-    mid_frames = metadata['FrameTimesStart'] + metadata['FrameDuration']/2
+    mid_frames = np.array(metadata['FrameTimesStart']) + np.array(metadata['FrameDuration'])/2
 
-    inputnode.min_frame = next(x for x, val in enumerate(mid_frames)
+    inputnode.inputs.min_frame = next(x for x, val in enumerate(mid_frames)
                                   if val > 120)   
 
     split_pet = pe.Node(interface = fs.MRIConvert(split = True), 
@@ -115,29 +118,29 @@ def init_pet_hmc_wf(mem_gb, omp_nthreads, metadata, name='pet_hmc_wf'):
                             name = "est_trans_rot", 
                             iterfield = ['mat_file'])
     
-    upd_frame_list = pe.Node(pe.Function(input_names = ['in_file','min_frame'],
+    upd_frame_list = pe.Node(Function(input_names = ['in_file','min_frame'],
                                    output_names = ['upd_list_frames'],
                                    function = update_list_frames),
                           name = "upd_frame_list")
     
-    upd_transform_list = pe.Node(pe.Function(input_names = ['in_file','min_frame'],
+    upd_transform_list = pe.Node(Function(input_names = ['in_file','min_frame'],
                                        output_names = ['upd_list_transforms'],
                                        function = update_list_transforms),
                               name = "upd_transform_list")
     
-    hmc_movement_output = pe.Node(pe.Function(input_names = ['translations', 'rot_angles', 'rotation_translation_matrix','in_file'],
+    hmc_movement_output = pe.Node(Function(input_names = ['translations', 'rot_angles', 'rotation_translation_matrix','in_file'],
                                            output_names = ['hmc_confounds'],
                                            function = combine_hmc_outputs),
                                name = "hmc_movement_output")
     
-    plot_motion = pe.Node(pe.Function(input_names = ['in_file'],
+    plot_motion = pe.Node(Function(input_names = ['in_file'],
                                            function = plot_motion_outputs),
                                name = "plot_motion")
     
     # Connect workflow - init_pet_hmc_wf
     workflow.config['execution']['remove_unnecessary_outputs'] = 'false'
     workflow.connect([
-        (inputnode, split_pet, [('pet', 'in_file')]),
+        (inputnode, split_pet,[('pet_file', 'in_file')]),
         (split_pet,smooth_frame,[('out_file', 'in_file')]),
         (smooth_frame,thres_frame,[('smoothed_file', 'in_file')]),
         (thres_frame,upd_frame_list,[('out_file', 'in_file')]),
@@ -157,11 +160,11 @@ def init_pet_hmc_wf(mem_gb, omp_nthreads, metadata, name='pet_hmc_wf'):
         (est_trans_rot,hmc_movement_output,[('translations', 'translations'),('rot_angles', 'rot_angles'),('rotation_translation_matrix','rotation_translation_matrix')]),
         (upd_frame_list,hmc_movement_output,[('upd_list_frames', 'in_file')]),
         (hmc_movement_output,plot_motion,[('hmc_confounds','in_file')]),
-        (concat_frames, outputnode, [('transformed_file', 'pet_mc_file')]),
-        (hmc_movement_output, outputnode, [('hmc_confounds', 'hmc_confounds')]),
-        (plot_motion, outputnode, [('translation', 'translation')]),
-        (plot_motion, outputnode, [('rotation', 'rotation')]),
-        (plot_motion, outputnode, [('movement', 'movement')])
+        (concat_frames, outputnode,[('concatenated_file', 'pet_mc_file')]),
+        (hmc_movement_output, outputnode,[('hmc_confounds', 'hmc_confounds')]),
+        (plot_motion, outputnode,[('translation', 'translation')]),
+        (plot_motion, outputnode,[('rotation', 'rotation')]),
+        (plot_motion, outputnode,[('movement', 'movement')])
                          ])
     return workflow
 
