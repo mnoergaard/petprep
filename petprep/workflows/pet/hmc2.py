@@ -11,9 +11,6 @@ from nipype.interfaces import utility as niu, fsl, freesurfer as fs
 from nipype import Function
 import numpy as np
 
-from ...config import DEFAULT_MEMORY_MIN_GB
-
-
 def init_pet_hmc_wf(mem_gb, omp_nthreads, metadata, name='pet_hmc_wf'):
     """
     Build a workflow to estimate head-motion parameters.
