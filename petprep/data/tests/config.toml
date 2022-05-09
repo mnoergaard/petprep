@@ -4,12 +4,12 @@ exec_env = "posix"
 free_mem = 2.2
 overcommit_policy = "heuristic"
 overcommit_limit = "50%"
-nipype_version = "1.5.0"
+nipype_version = "1.8.0"
 templateflow_version = "0.4.2"
-version = "20.0.1"
+version = "0.0.1"
 
 [execution]
-bids_dir = "ds000005/"
+bids_dir = "pet002/"
 bids_description_hash = "5d42e27751bbc884eca87cb4e62b9a0cca0cd86f8e578747fe89b77e6c5b21e5"
 boilerplate_only = false
 fs_license_file = "/opt/freesurfer/license.txt"
@@ -30,10 +30,7 @@ write_graph = false
 
 [workflow]
 anat_only = false
-aroma_err_on_warn = false
-aroma_melodic_dim = -200
 bold2t1w_dof = 6
-fmap_bspline = false
 force_syn = false
 hires = true
 ignore = []
