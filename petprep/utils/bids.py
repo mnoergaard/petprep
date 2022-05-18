@@ -192,7 +192,7 @@ def validate_input_dir(exec_env, bids_dir, participant_label):
 def collect_data(
     bids_dir,
     participant_label,
-    bids_validate=True,
+    bids_validate=False,
     bids_filters=None,
 ):
     """
