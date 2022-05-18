@@ -43,8 +43,8 @@ from ...interfaces import DerivativesDataSink
 from ...interfaces.reports import PETSummary
 
 # PET workflows
-from .hmc import init_pet_hmc_wf
-from .registration import init_pet_t1_trans_wf, init_pet_reg_wf
+from .hmc2 import init_pet_hmc_wf
+from .registration import init_pet_t1_trans_wf, init_pet_reg_wf, init_pet_reference_wf
 from .resampling import (
     init_pet_surf_wf,
     init_pet_std_trans_wf,
@@ -179,7 +179,7 @@ def init_pet_preproc_wf(pet_file):
 
     wf_name = _get_wf_name(ref_file)
     config.loggers.workflow.debug(
-        "Creating PET processing workflow for <%s> (%.2f GB / %d TRs). "
+        "Creating PET processing workflow for <%s> (%.2f GB / %d runs/sessions). "
         "Memory resampled/largemem=%.2f/%.2f GB.",
         ref_file,
         mem_gb["filesize"],
@@ -254,7 +254,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         ),
         name="outputnode",
     )
-
+    
     # Generate a brain-masked conversion of the t1w
     t1w_brain = pe.Node(ApplyMask(), name="t1w_brain")
 
@@ -273,42 +273,42 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         mem_gb=config.DEFAULT_MEMORY_MIN_GB,
         run_without_submitting=True,
     )
-    summary.inputs.dummy_scans = config.workflow.dummy_scans
 
-    pet_derivatives_wf = init_pet_derivatives_wf(
-        bids_root=layout.root,
-        cifti_output=config.workflow.cifti_output,
-        freesurfer=freesurfer,
-        all_metadata=all_metadata,
-        output_dir=petprep_dir,
-        spaces=spaces,
-    )
-    pet_derivatives_wf.inputs.inputnode.all_source_files = pet_file
+    # pet_derivatives_wf = init_pet_derivatives_wf(
+    #     bids_root=layout.root,
+    #     cifti_output=config.workflow.cifti_output,
+    #     freesurfer=freesurfer,
+    #     all_metadata=all_metadata,
+    #     output_dir=petprep_dir,
+    #     spaces=spaces,
+    # )
+    # pet_derivatives_wf.inputs.inputnode.all_source_files = pet_file
 
     # fmt:off
-    workflow.connect([
-        (outputnode, pet_derivatives_wf, [
-            ("pet_t1", "inputnode.pet_t1"),
-            ("pet_t1_ref", "inputnode.pet_t1_ref"),
-            ("pet2anat_xfm", "inputnode.pet2anat_xfm"),
-            ("pet2bold_xfm", "inputnode.pet2bold_xfm"),
-            ("pet_aseg_t1", "inputnode.pet_aseg_t1"),
-            ("pet_aparc_t1", "inputnode.pet_aparc_t1"),
-            ("pet_mask_t1", "inputnode.pet_mask_t1"),
-            ("pet_native", "inputnode.pet_native"),
-            ("pet_native_ref", "inputnode.pet_native_ref"),
-            ("pet_mask_native", "inputnode.pet_mask_native"),
-            ("surfaces", "inputnode.surf_files"),
-            ("pet_cifti", "inputnode.pet_cifti"),
-            ("cifti_variant", "inputnode.cifti_variant"),
-            ("cifti_metadata", "inputnode.cifti_metadata"),
-            ("cifti_density", "inputnode.cifti_density")
-        ]),
-    ])
+    # workflow.connect([
+    #     (outputnode, pet_derivatives_wf, [
+    #         ("pet_t1", "inputnode.pet_t1"),
+    #         ("pet_t1_ref", "inputnode.pet_t1_ref"),
+    #         ("pet2anat_xfm", "inputnode.pet2anat_xfm"),
+    #         ("pet_aseg_t1", "inputnode.pet_aseg_t1"),
+    #         ("pet_aparc_t1", "inputnode.pet_aparc_t1"),
+    #         ("pet_mask_t1", "inputnode.pet_mask_t1"),
+    #         ("pet_native", "inputnode.pet_native"),
+    #         ("pet_native_ref", "inputnode.pet_native_ref"),
+    #         ("pet_mask_native", "inputnode.pet_mask_native"),
+    #         ("surfaces", "inputnode.surf_files"),
+    #         ("pet_cifti", "inputnode.pet_cifti"),
+    #         ("cifti_variant", "inputnode.cifti_variant"),
+    #         ("cifti_metadata", "inputnode.cifti_metadata"),
+    #         ("cifti_density", "inputnode.cifti_density")
+    #     ]),
+    # ])
     # fmt:on
 
     # Select validated PET files (orientations checked or corrected)
     select_pet = pe.Node(niu.Select(), name="select_pet")
+
+    import pdb; pdb.set_trace()
 
     # HMC on the PET
     pet_hmc_wf = init_pet_hmc_wf(
@@ -316,12 +316,13 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         name="pet_hmc_wf"
     )
     
-    # Generate a tentative ref
-    initial_petref_wf = init_pet_reference_wf(
-        name="initial_petref_wf",
-        omp_nthreads=omp_nthreads,
-        pet_file=pet_file
-    )
+    # Generate a reference image from the motion corrected PET data
+    petref_wf = init_pet_reference_wf(
+         name="initial_petref_wf",
+         omp_nthreads=omp_nthreads,
+         pet_file=pet_file,
+         metadata=metadata
+         )
 
     # calculate PET registration to T1w
     pet_reg_wf = init_pet_reg_wf(
@@ -347,7 +348,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     pet_t1_trans_wf.inputs.inputnode.fieldwarp = "identity"
 
     pet_final = pe.Node(
-        niu.IdentityInterface(fields=["bold", "boldref", "mask", "bold_echos"]),
+        niu.IdentityInterface(fields=["pet", "petref", "mask"]),
         name="pet_final"
     )
 
@@ -358,12 +359,9 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         # Prepare masked T1w image
         (inputnode, t1w_brain, [("t1w_preproc", "in_file"),
                                 ("t1w_mask", "in_mask")]),
-        # Select validated bold files per-echo
-        (initial_petref_wf, select_pet, [("outputnode.all_pet_files", "inlist")]),
         # HMC
-        (initial_petref_wf, pet_hmc_wf, [
-            ("outputnode.raw_ref_image", "inputnode.raw_ref_image"),
-            ("outputnode.pet_file", "inputnode.pet_file"),
+        (inputnode, pet_hmc_wf, [
+            ("pet_file", "inputnode.pet_file"),
         ]),
         # PET-T1w registration workflow
         (inputnode, pet_reg_wf, [
@@ -578,72 +576,6 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             ]),
         ])
         # fmt:on
-
-        if config.workflow.use_aroma:  # ICA-AROMA workflow
-            from .confounds import init_ica_aroma_wf
-
-            ica_aroma_wf = init_ica_aroma_wf(
-                mem_gb=mem_gb["resampled"],
-                metadata=metadata,
-                omp_nthreads=omp_nthreads,
-                err_on_aroma_warn=config.workflow.aroma_err_on_warn,
-                aroma_melodic_dim=config.workflow.aroma_melodic_dim,
-                name="ica_aroma_wf",
-            )
-
-            join = pe.Node(
-                niu.Function(output_names=["out_file"], function=_to_join),
-                name="aroma_confounds",
-            )
-
-            mrg_conf_metadata = pe.Node(
-                niu.Merge(2),
-                name="merge_confound_metadata",
-                run_without_submitting=True,
-            )
-            mrg_conf_metadata2 = pe.Node(
-                DictMerge(),
-                name="merge_confound_metadata2",
-                run_without_submitting=True,
-            )
-            # fmt:off
-            workflow.disconnect([
-                (bold_confounds_wf, outputnode, [
-                    ("outputnode.confounds_file", "confounds"),
-                ]),
-                (bold_confounds_wf, outputnode, [
-                    ("outputnode.confounds_metadata", "confounds_metadata"),
-                ]),
-            ])
-            workflow.connect([
-                (inputnode, ica_aroma_wf, [("bold_file", "inputnode.name_source")]),
-                (bold_hmc_wf, ica_aroma_wf, [
-                    ("outputnode.movpar_file", "inputnode.movpar_file"),
-                ]),
-                (initial_boldref_wf, ica_aroma_wf, [
-                    ("outputnode.skip_vols", "inputnode.skip_vols"),
-                ]),
-                (bold_confounds_wf, join, [("outputnode.confounds_file", "in_file")]),
-                (bold_confounds_wf, mrg_conf_metadata, [
-                    ("outputnode.confounds_metadata", "in1"),
-                ]),
-                (ica_aroma_wf, join, [("outputnode.aroma_confounds", "join_file")]),
-                (ica_aroma_wf, mrg_conf_metadata, [("outputnode.aroma_metadata", "in2")]),
-                (mrg_conf_metadata, mrg_conf_metadata2, [("out", "in_dicts")]),
-                (ica_aroma_wf, outputnode, [
-                    ("outputnode.aroma_noise_ics", "aroma_noise_ics"),
-                    ("outputnode.melodic_mix", "melodic_mix"),
-                    ("outputnode.nonaggr_denoised_file", "nonaggr_denoised_file"),
-                ]),
-                (join, outputnode, [("out_file", "confounds")]),
-                (mrg_conf_metadata2, outputnode, [("out_dict", "confounds_metadata")]),
-                (bold_std_trans_wf, ica_aroma_wf, [
-                    ("outputnode.bold_std", "inputnode.bold_std"),
-                    ("outputnode.bold_mask_std", "inputnode.bold_mask_std"),
-                    ("outputnode.spatial_reference", "inputnode.spatial_reference"),
-                ]),
-            ])
-            # fmt:on
 
     # SURFACES ##################################################################################
     # Freesurfer
