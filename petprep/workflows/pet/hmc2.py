@@ -131,6 +131,7 @@ def init_pet_hmc_wf(mem_gb, omp_nthreads, metadata, name='pet_hmc_wf'):
                                name = "hmc_movement_output")
     
     plot_motion = pe.Node(Function(input_names = ['in_file'],
+                                   output_names = ['translation', 'rotation', 'movement'],
                                            function = plot_motion_outputs),
                                name = "plot_motion")
     
