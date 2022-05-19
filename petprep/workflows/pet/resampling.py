@@ -520,7 +520,7 @@ preprocessed BOLD runs*: {tpl}.
 def init_pet_preproc_trans_wf(
     mem_gb,
     omp_nthreads,
-    name="bold_preproc_trans_wf",
+    name="pet_preproc_trans_wf",
     use_compression=True,
     use_fieldwarp=False,
     interpolation="LanczosWindowedSinc",
