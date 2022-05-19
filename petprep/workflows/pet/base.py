@@ -228,6 +228,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     outputnode = pe.Node(
         niu.IdentityInterface(
             fields=[
+                "pet_mc_file",
                 "pet_t1",
                 "pet_t1_ref",
                 "pet2anat_xfm",
@@ -249,7 +250,10 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
                 "cifti_metadata",
                 "cifti_density",
                 "surfaces",
-                "hmc_confounds"
+                "hmc_confounds",
+                "translation",
+                "rotation",
+                "movement"
             ]
         ),
         name="outputnode",
@@ -274,15 +278,15 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         run_without_submitting=True,
     )
 
-    # pet_derivatives_wf = init_pet_derivatives_wf(
-    #     bids_root=layout.root,
-    #     cifti_output=config.workflow.cifti_output,
-    #     freesurfer=freesurfer,
-    #     all_metadata=all_metadata,
-    #     output_dir=petprep_dir,
-    #     spaces=spaces,
-    # )
-    # pet_derivatives_wf.inputs.inputnode.all_source_files = pet_file
+    pet_derivatives_wf = init_pet_derivatives_wf(
+        bids_root=layout.root,
+        cifti_output=config.workflow.cifti_output,
+        freesurfer=freesurfer,
+        all_metadata=all_metadata,
+        output_dir=petprep_dir,
+        spaces=spaces,
+    )
+    pet_derivatives_wf.inputs.inputnode.all_source_files = pet_file
 
     # fmt:off
     # workflow.connect([
