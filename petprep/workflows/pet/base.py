@@ -405,50 +405,16 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             ("outputnode.pet_aseg_t1", "pet_aseg_t1"),
             ("outputnode.pet_aparc_t1", "pet_aparc_t1"),
         ]),
-        
-        # Native-space BOLD files (if calculated)
-        (bold_final, outputnode, [
-            ("bold", "bold_native"),
-            ("boldref", "bold_native_ref"),
-            ("mask", "bold_mask_native"),
-            ("bold_echos", "bold_echos_native"),
-        ]),
-        # Summary
-        (initial_boldref_wf, summary, [("outputnode.algo_dummy_scans", "algo_dummy_scans")]),
-        (bold_reg_wf, summary, [("outputnode.fallback", "fallback")]),
-        (outputnode, summary, [("confounds", "confounds_file")]),
-        # Select echo indices for original/validated BOLD files
-        (echo_index, bold_source, [("echoidx", "index")]),
-        (echo_index, select_bold, [("echoidx", "index")]),
     ])
     # fmt:on
 
     # for standard EPI data, pass along correct file
-    if not multiecho:
-        # fmt:off
-        workflow.connect([
-            (inputnode, func_derivatives_wf, [("bold_file", "inputnode.source_file")]),
-            (bold_split, bold_t1_trans_wf, [("out_files", "inputnode.bold_split")]),
-            (bold_hmc_wf, bold_t1_trans_wf, [("outputnode.xforms", "inputnode.hmc_xforms")]),
-        ])
-        # fmt:on
-    else:  # for meepi, use optimal combination
-        # fmt:off
-        workflow.connect([
-            # update name source for optimal combination
-            (inputnode, func_derivatives_wf, [
-                (("bold_file", combine_meepi_source), "inputnode.source_file"),
-            ]),
-            (join_echos, bold_t2s_wf, [("bold_files", "inputnode.bold_file")]),
-            (join_echos, bold_final, [("bold_files", "bold_echos")]),
-            (bold_t2s_wf, split_opt_comb, [("outputnode.bold", "in_file")]),
-            (split_opt_comb, bold_t1_trans_wf, [("out_files", "inputnode.bold_split")]),
-            (bold_t2s_wf, bold_final, [("outputnode.bold", "bold")]),
-        ])
-        # fmt:on
+    workflow.connect([
+        (inputnode, pet_derivatives_wf, [("pet_file", "inputnode.source_file")]),
+    ])
 
         # Already applied in bold_bold_trans_wf, which inputs to bold_t2s_wf
-        bold_t1_trans_wf.inputs.inputnode.hmc_xforms = "identity"
+    pet_t1_trans_wf.inputs.inputnode.hmc_xforms = "identity"
 
     # Map final BOLD mask into T1w space (if required)
     nonstd_spaces = set(spaces.get_nonstandard())
