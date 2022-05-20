@@ -327,7 +327,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
     petref_wf = init_pet_reference_wf(
          name="initial_petref_wf",
          omp_nthreads=omp_nthreads,
-         pet_file=pet_mc_file,
+         pet_mc_file=pet_mc_file,
          metadata=metadata
          )
 
@@ -405,38 +405,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
             ("outputnode.pet_aseg_t1", "pet_aseg_t1"),
             ("outputnode.pet_aparc_t1", "pet_aparc_t1"),
         ]),
-        # Connect bold_confounds_wf
-        (inputnode, bold_confounds_wf, [
-            ("t1w_tpms", "inputnode.t1w_tpms"),
-            ("t1w_mask", "inputnode.t1w_mask"),
-        ]),
-        (bold_hmc_wf, bold_confounds_wf, [
-            ("outputnode.movpar_file", "inputnode.movpar_file"),
-            ("outputnode.rmsd_file", "inputnode.rmsd_file"),
-        ]),
-        (bold_reg_wf, bold_confounds_wf, [
-            ("outputnode.itk_t1_to_bold", "inputnode.t1_bold_xform")
-        ]),
-        (initial_boldref_wf, bold_confounds_wf, [
-            ("outputnode.skip_vols", "inputnode.skip_vols"),
-        ]),
-        (initial_boldref_wf, final_boldref_wf, [
-            ("outputnode.skip_vols", "inputnode.dummy_scans"),
-        ]),
-        (final_boldref_wf, bold_final, [
-            ("outputnode.ref_image", "boldref"),
-            ("outputnode.bold_mask", "mask"),
-        ]),
-        (bold_final, bold_confounds_wf, [
-            ("bold", "inputnode.bold"),
-            ("mask", "inputnode.bold_mask"),
-        ]),
-        (bold_confounds_wf, outputnode, [
-            ("outputnode.confounds_file", "confounds"),
-            ("outputnode.confounds_metadata", "confounds_metadata"),
-            ("outputnode.acompcor_masks", "acompcor_masks"),
-            ("outputnode.tcompcor_mask", "tcompcor_mask"),
-        ]),
+        
         # Native-space BOLD files (if calculated)
         (bold_final, outputnode, [
             ("bold", "bold_native"),
