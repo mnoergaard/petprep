@@ -34,11 +34,13 @@ from ... import config
 
 import os
 import os.path as op
+import numpy as np
 
 import pkg_resources as pkgr
 
 from nipype.pipeline import engine as pe
 from nipype.interfaces import utility as niu, fsl, c3
+from nipype import Function
 
 from ...interfaces import DerivativesDataSink
 
@@ -140,7 +142,7 @@ def init_pet_reg_wf(
     workflow = Workflow(name=name)
     inputnode = pe.Node(
         niu.IdentityInterface(
-            fields=['ref_petbrain', 't1w_brain', 't1w_dseg',
+            fields=['pet_ref', 't1w_brain', 't1w_dseg',
                     'subjects_dir', 'subject_id', 'fsnative2t1w_xfm']),
         name='inputnode'
     )
@@ -161,7 +163,7 @@ def init_pet_reg_wf(
 
     workflow.connect([
         (inputnode, bbr_wf, [
-            ('ref_pet_brain', 'inputnode.in_file'),
+            ('pet_ref', 'inputnode.in_file'),
             ('fsnative2t1w_xfm', 'inputnode.fsnative2t1w_xfm'),
             ('subjects_dir', 'inputnode.subjects_dir'),
             ('subject_id', 'inputnode.subject_id'),
@@ -891,3 +893,76 @@ def _conditional_downsampling(in_file, in_mask, zoom_th=4.0):
     nb.Nifti1Image(newmaskdata, newmask.affine, hdr).to_filename(out_mask)
 
     return str(out_file), str(out_mask)
+
+def init_pet_reference_wf(mem_gb, omp_nthreads, pet_mc_file, metadata, name='pet_ref_wf'):
+    
+    from niworkflows.engine.workflows import LiterateWorkflow as Workflow
+
+    workflow = Workflow(name=name)
+    workflow.__desc__ = """\
+        Head-motion parameters with respect to the PET reference
+        (transformation matrices, and six corresponding rotation and translation
+         parameters) are estimated before any spatiotemporal filtering using
+        `mcflirt` [FSL {fsl_ver}, @mcflirt].
+        """.format(fsl_ver=fsl.Info().version() or '<ver>')
+
+    inputnode = pe.Node(
+        niu.IdentityInterface(fields=['pet_mc_file']),
+        name='inputnode')
+    outputnode = pe.Node(
+        niu.IdentityInterface(
+            fields=['pet_ref']),
+        name='outputnode')
+
+    inputnode.inputs.frame_duraction = np.array(metadata['FrameDuration'])
+    
+    est_wavg_pet = pe.Node(Function(input_names = ['in_file','frame_duration'],
+                                       output_names = ['pet_ref'],
+                                       function = compute_weighted_average),
+                              name = "est_wavg_pet")
+    
+    workflow.connect([
+        (inputnode, est_wavg_pet,[('pet_mc_file', 'in_file')]),
+        (inputnode, est_wavg_pet,[('frame_duration', 'frames')]),
+        (est_wavg_pet, outputnode),[('out_file','pet_ref')]
+                         ])
+    return workflow
+
+def compute_weighted_average(in_file, frames, out_file=None): 
+
+    """
+        A function to compute a time weighted average over
+        the time frames for a given pet volume
+
+        Parameters
+        ----------
+        in_file : str 
+            input file path (str) for pet volume
+        out_file : str 
+            output file path (str) computed average
+
+        Returns
+        -------
+        out_file : str 
+            output file path (str) computed average
+
+    """   
+        
+    import numpy as np
+    import os 
+    import nibabel as nib
+    from nipype.utils.filemanip import split_filename
+
+
+    img = nib.load(in_file)        
+    data = np.float32(img.get_fdata())
+
+    data = np.sum(np.float32(data * frames),axis=3) / np.sum(frames)
+      
+    img_ = nib.Nifti1Image(data, img.affine)
+            
+    new_pth = os.getcwd()
+    pth, fname, ext = split_filename(in_file)
+    out_file = "{}_twa.nii.gz".format(fname)
+    img_.to_filename(os.path.join(new_pth,out_file))
+    return os.path.abspath(out_file)
