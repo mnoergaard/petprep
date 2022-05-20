@@ -229,6 +229,7 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         niu.IdentityInterface(
             fields=[
                 "pet_mc_file",
+                "pet_ref",
                 "pet_t1",
                 "pet_t1_ref",
                 "pet2anat_xfm",
@@ -320,11 +321,13 @@ Non-gridded (surface) resamplings were performed using `mri_vol2surf`
         name="pet_hmc_wf"
     )
     
+    pet_mc_file = outputnode.pet_mc_file
+    
     # Generate a reference image from the motion corrected PET data
     petref_wf = init_pet_reference_wf(
          name="initial_petref_wf",
          omp_nthreads=omp_nthreads,
-         pet_file=pet_file,
+         pet_file=pet_mc_file,
          metadata=metadata
          )
 
